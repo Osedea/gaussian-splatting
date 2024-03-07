@@ -19,6 +19,7 @@ COPY environment.yml environment.yml
 COPY submodules/ submodules/ 
 RUN conda init
 RUN conda env create --file environment.yml
+RUN conda install conda-forge::opencv -y
 
 # COLMAP dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \

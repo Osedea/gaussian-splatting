@@ -1,8 +1,6 @@
 import cv2
 from pathlib import Path
-
-
-_DATA_PATH = Path("data")
+from argparse import ArgumentParser
 
 
 def main(
@@ -36,8 +34,20 @@ def main(
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser("Extract frames from video file.")
+    parser.add_argument("-v", "--video", type=Path, required=True)
+    parser.add_argument("-o", "--output", type=Path)
+    parser.add_argument("-k", default=1, type=int)
+    args = parser.parse_args()
+
+
+    if args.output is None:
+        args.output = args.video.parent / str(args.k)
+    args.output = args.output / "input"
+    args.output.mkdir(exist_ok=True, parents=True)
+
     main(
-        video_filename=(_DATA_PATH / "test.mp4"),
-        output_path=(_DATA_PATH / "output"),
-        k=1
+        video_filename=args.video,
+        output_path=args.output,
+        k=args.k
     )
