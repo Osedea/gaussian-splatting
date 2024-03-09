@@ -3,7 +3,7 @@
 # GRAPHDECO research group, https://team.inria.fr/graphdeco
 # All rights reserved.
 #
-# This software is free for non-commercial, research and evaluation use 
+# This software is free for non-commercial, research and evaluation use
 # under the terms of the LICENSE.md file.
 #
 # For inquiries contact  george.drettakis@inria.fr
@@ -12,12 +12,15 @@
 from argparse import ArgumentParser, Namespace
 import sys
 import os
+from argparse import ArgumentParser, Namespace
 
 class GroupParams:
     pass
 
 class ParamGroup:
-    def __init__(self, parser: ArgumentParser, name : str, fill_none = False):
+    def __init__(self, parser: ArgumentParser = None, name : str = "", fill_none = False):
+        if parser is None:
+            parser = ArgumentParser()
         group = parser.add_argument_group(name)
         for key, value in vars(self).items():
             shorthand = False
@@ -25,7 +28,7 @@ class ParamGroup:
                 shorthand = True
                 key = key[1:]
             t = type(value)
-            value = value if not fill_none else None 
+            value = value if not fill_none else None
             if shorthand:
                 if t == bool:
                     group.add_argument("--" + key, ("-" + key[0:1]), default=value, action="store_true")
@@ -44,10 +47,10 @@ class ParamGroup:
                 setattr(group, arg[0], arg[1])
         return group
 
-class ModelParams(ParamGroup): 
-    def __init__(self, parser, sentinel=False):
+class ModelParams(ParamGroup):
+    def __init__(self, parser=None, source_path="", sentinel=False):
         self.sh_degree = 3
-        self._source_path = ""
+        self._source_path = source_path
         self._model_path = ""
         self._images = "images"
         self._resolution = -1
@@ -62,14 +65,14 @@ class ModelParams(ParamGroup):
         return g
 
 class PipelineParams(ParamGroup):
-    def __init__(self, parser):
+    def __init__(self, parser=None):
         self.convert_SHs_python = False
         self.compute_cov3D_python = False
         self.debug = False
         super().__init__(parser, "Pipeline Parameters")
 
 class OptimizationParams(ParamGroup):
-    def __init__(self, parser):
+    def __init__(self, parser=None):
         self.iterations = 30_000
         self.position_lr_init = 0.00016
         self.position_lr_final = 0.0000016
