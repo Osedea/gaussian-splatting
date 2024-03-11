@@ -100,7 +100,8 @@ class Optimization():
     gpu="T4",
     volumes = {"/workspace/output/": model_volume},
     network_file_systems={"/workspace/data/": data_volume},
-    mounts=mounts
+    mounts=mounts,
+    timeout=10800
 )
 def f():
     from training.train import training
