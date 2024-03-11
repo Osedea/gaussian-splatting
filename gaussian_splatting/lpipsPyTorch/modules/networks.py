@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
-from .utils import normalize_activation
+from gaussian_splatting.lpipsPyTorch.modules.utils import normalize_activation
 
 
 def get_network(net_type: str):

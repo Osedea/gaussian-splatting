@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from .networks import get_network, LinLayers
-from .utils import get_state_dict
+from gaussian_splatting.lpipsPyTorch.modules.networks import get_network, LinLayers
+from gaussian_splatting.lpipsPyTorch.modules.utils import get_state_dict
 
 
 class LPIPS(nn.Module):
@@ -10,7 +10,7 @@ class LPIPS(nn.Module):
     Learned Perceptual Image Patch Similarity (LPIPS).
 
     Arguments:
-        net_type (str): the network type to compare the features: 
+        net_type (str): the network type to compare the features:
                         'alex' | 'squeeze' | 'vgg'. Default: 'alex'.
         version (str): the version of LPIPS. Default: 0.1.
     """

@@ -15,11 +15,11 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 ENV PATH=$CONDA_DIR/bin:$PATH
 
 # Install requirements
+COPY setup.py setup.py
 COPY environment.yml environment.yml
 COPY submodules/ submodules/ 
 RUN conda init
 RUN conda env create --file environment.yml
-RUN conda install conda-forge::opencv -y
 
 # COLMAP dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
