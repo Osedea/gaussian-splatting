@@ -11,7 +11,7 @@
 import sys
 from argparse import ArgumentParser
 from gaussian_splatting.arguments import ModelParams, PipelineParams, OptimizationParams
-from gaussian_splatting.training.train import training
+from gaussian_splatting.training import training
 
 
 if __name__ == "__main__":
