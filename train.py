@@ -8,10 +8,11 @@
 #
 # For inquiries contact  george.drettakis@inria.fr
 #
-
+import sys
 from argparse import ArgumentParser
 from arguments import ModelParams, PipelineParams, OptimizationParams
 from training.train import training
+
 
 if __name__ == "__main__":
     # Set up command line argument parser
@@ -35,10 +36,10 @@ if __name__ == "__main__":
         dataset=lp.extract(args),
         opt=op.extract(args),
         pipe=pp.extract(args),
-        test_iterations=args.test_iterations,
-        save_iterations=args.save_iterations,
+        testing_iterations=args.test_iterations,
+        saving_iterations=args.save_iterations,
         checkpoint_iterations=args.checkpoint_iterations,
-        start_checkpoint=args.start_checkpoint,
+        checkpoint=args.start_checkpoint,
         debug_from=args.debug_from,
         quiet=args.quiet,
         ip=args.ip,
