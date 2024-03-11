@@ -17,6 +17,8 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 # Install requirements
 COPY setup.py setup.py
 COPY environment.yml environment.yml
+COPY gaussian_splatting/ gaussian_splatting/ 
+COPY scripts/ scripts/ 
 COPY submodules/ submodules/ 
 RUN conda init
 RUN conda env create --file environment.yml

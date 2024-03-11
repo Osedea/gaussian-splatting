@@ -1,17 +1,17 @@
 name: gaussian_splatting
 channels:
-  - pytorch
+  #- pytorch
   - conda-forge
   - defaults
 dependencies:
   - plyfile=0.8.1
   - python=3.7.13
   - pip=22.3.1
-  - opencv 
-  - pytorch=1.12.1
-  - torchvision=0.13.1
+    #- opencv 
+    #- pytorch=1.12.1
+    #- torchvision=0.13.1
   - tqdm
   - pip:
-    - .
-    - submodules/diff-gaussian-rasterization
-    - submodules/simple-knn
+    - -e .
+      #- submodules/diff-gaussian-rasterization
+      #- submodules/simple-knn
