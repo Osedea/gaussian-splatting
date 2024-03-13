@@ -53,7 +53,7 @@ image =  (
 class Dataset():
     def __init__(self,):
         self.sh_degree = 3
-        self.source_path = "/workspace/data/phil/"
+        self.source_path = "/workspace/data/train/"
         self.model_path = ""
         self.images = "images"
         self.resolution = -1
@@ -105,4 +105,4 @@ def f():
         pipe=Pipeline()
     )
 
-    model_volume.commit()
+    volume_model.commit()
