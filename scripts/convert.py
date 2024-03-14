@@ -40,8 +40,7 @@ def main(
     resize,
     use_gpu
 ):
-    (source_path / "distorted" / "sparse").mkdir(exist_ok=True)
-
+    (source_path / "distorted" / "sparse").mkdir(parents=True, exist_ok=True)
     _run_command(
         step="Feature extraction",
         command=f"colmap feature_extractor \
@@ -54,23 +53,19 @@ def main(
 
     _run_command(
         step=" Feature matching",
-        command=f"colmap exhaustive_matcher \
+        command=f"colmap sequential_matcher \
         --database_path {source_path / 'distorted' / 'database.db'} \
         --SiftMatching.use_gpu {use_gpu}"
     )
 
-    # The default Mapper tolerance is unnecessarily large,
-    # decreasing it speeds up bundle adjustment steps.
     _run_command(
         step="Mapper",
         command=f"colmap mapper \
         --database_path {source_path / 'distorted' / 'database.db'} \
         --image_path {source_path / 'input'} \
-        --output_path {source_path / 'distorted' / 'sparse'} \
-        --Mapper.ba_global_function_tolerance=0.000001"
+        --output_path {source_path / 'distorted' / 'sparse'}"
     )
 
-    ## We need to undistort our images into ideal pinhole intrinsics.
     _run_command(
         step="Image undistortion",
         command=f"colmap image_undistorter \
