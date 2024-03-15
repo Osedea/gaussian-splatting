@@ -53,7 +53,7 @@ image =  (
 class Dataset():
     def __init__(self,):
         self.sh_degree = 3
-        self.source_path = "/workspace/data/train/"
+        self.source_path = "/workspace/data/phil_open/5"
         self.model_path = ""
         self.images = "images"
         self.resolution = -1
@@ -97,9 +97,10 @@ class Optimization():
     timeout=10800
 )
 def f():
-    from gaussian_splatting.training import training
+    from gaussian_splatting.training import Trainer
 
-    training(
+    trainer = Trainer()
+    trainer.run(
         dataset=Dataset(),
         opt=Optimization(),
         pipe=Pipeline()

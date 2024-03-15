@@ -11,7 +11,7 @@
 import sys
 from argparse import ArgumentParser
 from gaussian_splatting.arguments import ModelParams, PipelineParams, OptimizationParams
-from gaussian_splatting.training import training
+from gaussian_splatting.training import Trainer
 
 
 if __name__ == "__main__":
@@ -32,10 +32,7 @@ if __name__ == "__main__":
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
 
-    training(
-        dataset=lp.extract(args),
-        opt=op.extract(args),
-        pipe=pp.extract(args),
+    trainer = Trainer(
         testing_iterations=args.test_iterations,
         saving_iterations=args.save_iterations,
         checkpoint_iterations=args.checkpoint_iterations,
@@ -45,4 +42,9 @@ if __name__ == "__main__":
         ip=args.ip,
         port=args.port,
         detect_anomaly=args.detect_anomaly
+    )
+    trainer.run(
+        dataset=lp.extract(args),
+        opt=op.extract(args),
+        pipe=pp.extract(args),
     )
