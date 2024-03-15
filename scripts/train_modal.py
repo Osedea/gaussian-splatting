@@ -65,7 +65,6 @@ class Pipeline():
     def __init__(self):
         self.convert_SHs_python = False
         self.compute_cov3D_python = False
-        self.debug = False
 
 class Optimization():
     def __init__(self):

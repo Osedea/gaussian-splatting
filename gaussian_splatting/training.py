@@ -19,8 +19,7 @@ class Trainer:
         testing_iterations=None,
         saving_iterations=None,
         checkpoint_iterations=None,
-        checkpoint=None,
-        debug_from=-1,
+        checkpoint_path=None,
         quiet=False,
         detect_anomaly=False
     ):
@@ -36,8 +35,7 @@ class Trainer:
             checkpoint_iterations = []
         self._checkpoint_iterations = checkpoint_iterations
 
-        self._checkpoint = checkpoint
-        self._debug_from = debug_from
+        self._checkpoint_path = checkpoint_path
 
         safe_state(quiet)
 
@@ -54,8 +52,9 @@ class Trainer:
         gaussians = GaussianModel(dataset.sh_degree)
         scene = Scene(dataset, gaussians)
         gaussians.training_setup(opt)
-        if self._checkpoint:
-            (model_params, first_iter) = torch.load(self._checkpoint)
+
+        if self._checkpoint_path:
+            (model_params, first_iter) = torch.load(self._checkpoint_path)
             gaussians.restore(model_params, opt)
 
         bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
@@ -81,10 +80,6 @@ class Trainer:
             if not viewpoint_stack:
                 viewpoint_stack = scene.getTrainCameras().copy()
             viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack)-1))
-
-            # Render
-            if (iteration - 1) == self._debug_from:
-                pipe.debug = True
 
             bg = torch.rand((3), device="cuda") if opt.random_background else background
 
