@@ -58,7 +58,6 @@ class Dataset():
         self.images = "images"
         self.resolution = -1
         self.white_background = False
-        self.data_device = "cuda"
         self.eval = False
 
 class Pipeline():
