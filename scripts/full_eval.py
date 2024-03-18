@@ -37,7 +37,7 @@ if not args.skip_training or not args.skip_rendering:
     args = parser.parse_args()
 
 if not args.skip_training:
-    common_args = " --quiet --eval --test_iterations -1 "
+    common_args = " --eval --test_iterations -1 "
     for scene in mipnerf360_outdoor_scenes:
         source = args.mipnerf360 + "/" + scene
         os.system(
@@ -94,7 +94,7 @@ if not args.skip_rendering:
     for scene in deep_blending_scenes:
         all_sources.append(args.deepblending + "/" + scene)
 
-    common_args = " --quiet --eval --skip_train"
+    common_args = " --eval --skip_train"
     for scene, source in zip(all_scenes, all_sources):
         os.system(
             "python render.py --iteration 7000 -s "

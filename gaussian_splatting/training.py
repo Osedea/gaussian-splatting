@@ -21,17 +21,15 @@ class Trainer:
         saving_iterations=None,
         checkpoint_iterations=None,
         checkpoint_path=None,
-        quiet=False,
-        detect_anomaly=False,
     ):
         self._resolution = resolution
 
         if testing_iterations is None:
-            testing_iterations = [7_000, 30_000]
+            testing_iterations = [7000, 30000]
         self._testing_iterations = testing_iterations
 
         if saving_iterations is None:
-            saving_iterations = [7_000, 30_000]
+            saving_iterations = [7000, 30000]
         self._saving_iterations = saving_iterations
 
         if checkpoint_iterations is None:
@@ -39,10 +37,6 @@ class Trainer:
         self._checkpoint_iterations = checkpoint_iterations
 
         self._checkpoint_path = checkpoint_path
-
-        safe_state(quiet)
-
-        torch.autograd.set_detect_anomaly(detect_anomaly)
 
     def run(
         self,
@@ -220,4 +214,4 @@ def training_report(
 
         torch.cuda.empty_cache()
 
-    print("\nTraining complete.")
+        print("\nTraining complete.")

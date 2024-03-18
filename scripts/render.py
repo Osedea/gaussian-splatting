@@ -84,11 +84,9 @@ if __name__ == "__main__":
     parser.add_argument("--iteration", default=-1, type=int)
     parser.add_argument("--skip_train", action="store_true")
     parser.add_argument("--skip_test", action="store_true")
-    parser.add_argument("--quiet", action="store_true")
     args = get_combined_args(parser)
     print("Rendering " + args.model_path)
 
-    # Initialize system state (RNG)
-    safe_state(args.quiet)
+    safe_state()
 
     render_sets(model.extract(args), args.iteration, args.skip_train, args.skip_test)
