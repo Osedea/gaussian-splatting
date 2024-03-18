@@ -20,7 +20,7 @@ from gaussian_splatting.scene.gaussian_model import GaussianModel
 
 def render(
     viewpoint_camera,
-    pc: GaussianModel,
+    gaussian_model: GaussianModel,
     bg_color: torch.Tensor = None,
     scaling_modifier=1.0,
 ):
@@ -29,18 +29,6 @@ def render(
 
     Background tensor (bg_color) must be on GPU!
     """
-
-    # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
-    screenspace_points = (
-        torch.zeros_like(
-            pc.get_xyz, dtype=pc.get_xyz.dtype, requires_grad=True, device="cuda"
-        )
-        + 0
-    )
-    try:
-        screenspace_points.retain_grad()
-    except:
-        pass
 
     if bg_color is None:
         bg_color = torch.tensor([1, 1, 1], dtype=torch.float32, device="cuda")
@@ -58,7 +46,7 @@ def render(
         scale_modifier=scaling_modifier,
         viewmatrix=viewpoint_camera.world_view_transform,
         projmatrix=viewpoint_camera.full_proj_transform,
-        sh_degree=pc.active_sh_degree,
+        sh_degree=gaussian_model.active_sh_degree,
         campos=viewpoint_camera.camera_center,
         prefiltered=False,
         debug=False,
@@ -66,29 +54,28 @@ def render(
 
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)
 
-    means3D = pc.get_xyz
-    means2D = screenspace_points
-    opacity = pc.get_opacity
-
-    cov3D_precomp = None
-    scales = pc.get_scaling
-    rotations = pc.get_rotation
-
-    # If precomputed colors are provided, use them. Otherwise, if it is desired to precompute colors
-    # from SHs in Python, do it. If not, then SH -> RGB conversion will be done by rasterizer.
-    colors_precomp = None
-    shs = pc.get_features
+    # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
+    screenspace_points = (
+        torch.zeros_like(
+            gaussian_model.get_xyz,
+            dtype=gaussian_model.get_xyz.dtype,
+            requires_grad=True,
+            device="cuda",
+        )
+        + 0
+    )
+    screenspace_points.retain_grad()
 
     # Rasterize visible Gaussians to image, obtain their radii (on screen).
     rendered_image, radii = rasterizer(
-        means3D=means3D,
-        means2D=means2D,
-        shs=shs,
-        colors_precomp=colors_precomp,
-        opacities=opacity,
-        scales=scales,
-        rotations=rotations,
-        cov3D_precomp=cov3D_precomp,
+        means3D=gaussian_model.get_xyz,
+        means2D=screenspace_points,
+        shs=gaussian_model.get_features,
+        opacities=gaussian_model.get_opacity,
+        scales=gaussian_model.get_scaling,
+        rotations=gaussian_model.get_rotation,
+        colors_precomp=None,
+        cov3D_precomp=None,
     )
 
     # Those Gaussians that were frustum culled or had a radius of 0 were not visible.

@@ -74,7 +74,6 @@ def getNerfppNorm(cam_info):
 
 
 def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
-
     cam_infos = []
     for idx, key in enumerate(cam_extrinsics):
         sys.stdout.write("\r")
@@ -161,7 +160,7 @@ def storePly(path, xyz, rgb):
     ply_data.write(path)
 
 
-def readColmapSceneInfo(path, images, eval, llffhold=8):
+def readColmapSceneInfo(path, keep_eval, llffhold=8):
     try:
         cameras_extrinsic_file = os.path.join(path, "sparse/0", "images.bin")
         cameras_intrinsic_file = os.path.join(path, "sparse/0", "cameras.bin")
@@ -173,15 +172,14 @@ def readColmapSceneInfo(path, images, eval, llffhold=8):
         cam_extrinsics = read_extrinsics_text(cameras_extrinsic_file)
         cam_intrinsics = read_intrinsics_text(cameras_intrinsic_file)
 
-    reading_dir = "images" if images == None else images
     cam_infos_unsorted = readColmapCameras(
         cam_extrinsics=cam_extrinsics,
         cam_intrinsics=cam_intrinsics,
-        images_folder=os.path.join(path, reading_dir),
+        images_folder=os.path.join(path, "images"),
     )
     cam_infos = sorted(cam_infos_unsorted.copy(), key=lambda x: x.image_name)
 
-    if eval:
+    if keep_eval:
         train_cam_infos = [c for idx, c in enumerate(cam_infos) if idx % llffhold != 0]
         test_cam_infos = [c for idx, c in enumerate(cam_infos) if idx % llffhold == 0]
     else:

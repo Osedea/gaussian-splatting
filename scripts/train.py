@@ -11,14 +11,12 @@
 import sys
 from argparse import ArgumentParser
 
-from gaussian_splatting.arguments import ModelParams, OptimizationParams
 from gaussian_splatting.training import Trainer
 
 if __name__ == "__main__":
     # Set up command line argument parser
     parser = ArgumentParser(description="Training script parameters")
-    lp = ModelParams(parser)
-    op = OptimizationParams(parser)
+    parser.add_argument("-s", "--source-path", type=str, required=True)
     parser.add_argument(
         "--test_iterations", nargs="+", type=int, default=[7_000, 30_000]
     )
@@ -29,16 +27,13 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint_path", type=str, default=None)
     parser.add_argument("--resolution", default=-1, type=int)
     args = parser.parse_args(sys.argv[1:])
-    args.save_iterations.append(args.iterations)
 
     trainer = Trainer(
+        source_path=args.source_path,
         resolution=args.resolution,
         testing_iterations=args.test_iterations,
         saving_iterations=args.save_iterations,
         checkpoint_iterations=args.checkpoint_iterations,
         checkpoint_path=args.checkpoint_path,
     )
-    trainer.run(
-        dataset=lp.extract(args),
-        opt=op.extract(args),
-    )
+    trainer.run()
