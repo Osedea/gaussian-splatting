@@ -29,10 +29,12 @@ if __name__ == "__main__":
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
     parser.add_argument("--checkpoint_path", type=str, default=None)
+    parser.add_argument("--resolution", default=-1, type=int)
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
 
     trainer = Trainer(
+        resolution=args.resolution,
         testing_iterations=args.test_iterations,
         saving_iterations=args.save_iterations,
         checkpoint_iterations=args.checkpoint_iterations,

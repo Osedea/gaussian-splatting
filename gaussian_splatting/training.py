@@ -16,6 +16,7 @@ from gaussian_splatting.utils.loss import l1_loss, ssim
 class Trainer:
     def __init__(
         self,
+        resolution=-1,
         testing_iterations=None,
         saving_iterations=None,
         checkpoint_iterations=None,
@@ -23,6 +24,8 @@ class Trainer:
         quiet=False,
         detect_anomaly=False,
     ):
+        self._resolution = resolution
+
         if testing_iterations is None:
             testing_iterations = [7_000, 30_000]
         self._testing_iterations = testing_iterations
@@ -48,7 +51,7 @@ class Trainer:
     ):
         first_iter = 0
         gaussians = GaussianModel(dataset.sh_degree)
-        scene = Scene(dataset, gaussians)
+        scene = Scene(dataset, gaussians, resolution=self._resolution)
         gaussians.training_setup(opt)
 
         if self._checkpoint_path:

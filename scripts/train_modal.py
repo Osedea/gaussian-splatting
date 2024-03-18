@@ -45,7 +45,6 @@ class Dataset:
         self.source_path = "/workspace/data/phil_open/5"
         self.model_path = ""
         self.images = "images"
-        self.resolution = -1
         self.eval = False
 
 

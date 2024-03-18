@@ -42,11 +42,21 @@ def render_set(model_path, name, iteration, views, gaussians):
 
 
 def render_sets(
-    dataset: ModelParams, iteration: int, skip_train: bool, skip_test: bool
+    dataset: ModelParams,
+    iteration: int,
+    skip_train: bool,
+    skip_test: bool,
+    resolution: int = -1,
 ):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree)
-        scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
+        scene = Scene(
+            dataset,
+            gaussians,
+            load_iteration=iteration,
+            shuffle=False,
+            resolution=resolution,
+        )
 
         if not skip_train:
             render_set(

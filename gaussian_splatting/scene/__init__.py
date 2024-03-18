@@ -31,6 +31,7 @@ class Scene:
         gaussians: GaussianModel,
         load_iteration=None,
         shuffle=True,
+        resolution=-1,
         resolution_scales=[1.0],
     ):
         """b
@@ -86,11 +87,11 @@ class Scene:
         for resolution_scale in resolution_scales:
             print("Loading Training Cameras")
             self.train_cameras[resolution_scale] = cameraList_from_camInfos(
-                scene_info.train_cameras, resolution_scale, args
+                scene_info.train_cameras, resolution_scale, resolution
             )
             print("Loading Test Cameras")
             self.test_cameras[resolution_scale] = cameraList_from_camInfos(
-                scene_info.test_cameras, resolution_scale, args
+                scene_info.test_cameras, resolution_scale, resolution
             )
 
         if self.loaded_iter:

@@ -59,7 +59,6 @@ class ModelParams(ParamGroup):
         self._source_path = source_path
         self._model_path = ""
         self._images = "images"
-        self._resolution = -1
         self.eval = False
         super().__init__(parser, "Loading Parameters", sentinel)
 
