@@ -10,7 +10,6 @@ import uuid
 from tqdm import tqdm
 from gaussian_splatting.utils.image_utils import psnr
 from argparse import Namespace
-from gaussian_splatting.arguments import ModelParams, PipelineParams, OptimizationParams
 
 
 class Trainer:
@@ -46,7 +45,6 @@ class Trainer:
         self,
         dataset,
         opt,
-        pipe,
    ):
         first_iter = 0
         gaussians = GaussianModel(dataset.sh_degree)
@@ -83,7 +81,7 @@ class Trainer:
 
             bg = torch.rand((3), device="cuda") if opt.random_background else background
 
-            render_pkg = render(viewpoint_cam, gaussians, pipe, bg)
+            render_pkg = render(viewpoint_cam, gaussians, bg)
             image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
 
             # Loss
@@ -113,7 +111,7 @@ class Trainer:
                     self._testing_iterations,
                     scene,
                     render,
-                    (pipe, background)
+                    (background)
                 )
                 if (iteration in self._saving_iterations):
                     print("\n[ITER {}] Saving Gaussians".format(iteration))
