@@ -9,16 +9,17 @@
 # For inquiries contact  george.drettakis@inria.fr
 #
 
-from argparse import ArgumentParser, Namespace
-import sys
 import os
+import sys
 from argparse import ArgumentParser, Namespace
+
 
 class GroupParams:
     pass
 
+
 class ParamGroup:
-    def __init__(self, parser: ArgumentParser = None, name : str = "", fill_none = False):
+    def __init__(self, parser: ArgumentParser = None, name: str = "", fill_none=False):
         if parser is None:
             parser = ArgumentParser()
         group = parser.add_argument_group(name)
@@ -31,9 +32,13 @@ class ParamGroup:
             value = value if not fill_none else None
             if shorthand:
                 if t == bool:
-                    group.add_argument("--" + key, ("-" + key[0:1]), default=value, action="store_true")
+                    group.add_argument(
+                        "--" + key, ("-" + key[0:1]), default=value, action="store_true"
+                    )
                 else:
-                    group.add_argument("--" + key, ("-" + key[0:1]), default=value, type=t)
+                    group.add_argument(
+                        "--" + key, ("-" + key[0:1]), default=value, type=t
+                    )
             else:
                 if t == bool:
                     group.add_argument("--" + key, default=value, action="store_true")
@@ -46,6 +51,7 @@ class ParamGroup:
             if arg[0] in vars(self) or ("_" + arg[0]) in vars(self):
                 setattr(group, arg[0], arg[1])
         return group
+
 
 class ModelParams(ParamGroup):
     def __init__(self, parser=None, source_path="", sentinel=False):
@@ -61,6 +67,7 @@ class ModelParams(ParamGroup):
         g = super().extract(args)
         g.source_path = os.path.abspath(g.source_path)
         return g
+
 
 class OptimizationParams(ParamGroup):
     def __init__(self, parser=None):
@@ -82,7 +89,8 @@ class OptimizationParams(ParamGroup):
         self.densify_grad_threshold = 0.0002
         super().__init__(parser, "Optimization Parameters")
 
-def get_combined_args(parser : ArgumentParser):
+
+def get_combined_args(parser: ArgumentParser):
     cmdlne_string = sys.argv[1:]
     cfgfile_string = "Namespace()"
     args_cmdline = parser.parse_args(cmdlne_string)
@@ -99,7 +107,7 @@ def get_combined_args(parser : ArgumentParser):
     args_cfgfile = eval(cfgfile_string)
 
     merged_dict = vars(args_cfgfile).copy()
-    for k,v in vars(args_cmdline).items():
+    for k, v in vars(args_cmdline).items():
         if v != None:
             merged_dict[k] = v
     return Namespace(**merged_dict)

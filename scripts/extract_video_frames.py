@@ -1,13 +1,10 @@
-import cv2
-from pathlib import Path
 from argparse import ArgumentParser
+from pathlib import Path
+
+import cv2
 
 
-def main(
-    video_filename: Path,
-    output_path: Path,
-    k: int = 10
-):
+def main(video_filename: Path, output_path: Path, k: int = 10):
     if not video_filename.exists():
         raise FileNotFoundError(f"Invalid video filename {video_filename}.")
 
@@ -16,7 +13,7 @@ def main(
     cam = cv2.VideoCapture(video_filename.as_posix())
 
     current_frame = 0
-    while(True):
+    while True:
         ret, frame = cam.read()
 
         if not ret:
@@ -40,14 +37,9 @@ if __name__ == "__main__":
     parser.add_argument("-k", default=1, type=int)
     args = parser.parse_args()
 
-
     if args.output is None:
         args.output = args.video.parent / str(args.k)
     args.output = args.output / "input"
     args.output.mkdir(exist_ok=True, parents=True)
 
-    main(
-        video_filename=args.video,
-        output_path=args.output,
-        k=args.k
-    )
+    main(video_filename=args.video, output_path=args.output, k=args.k)

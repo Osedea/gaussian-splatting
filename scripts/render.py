@@ -9,18 +9,19 @@
 # For inquiries contact  george.drettakis@inria.fr
 #
 
-import torch
 import os
-from tqdm import tqdm
-from os import makedirs
-import torchvision
 from argparse import ArgumentParser
+from os import makedirs
 
-from gaussian_splatting.gaussian_renderer import render
-from gaussian_splatting.utils.general_utils import safe_state
+import torch
+import torchvision
+from tqdm import tqdm
+
 from gaussian_splatting.arguments import ModelParams, get_combined_args
-from gaussian_splatting.gaussian_renderer import GaussianModel
+from gaussian_splatting.gaussian_renderer import GaussianModel, render
 from gaussian_splatting.scene import Scene
+from gaussian_splatting.utils.general_utils import safe_state
+
 
 def render_set(model_path, name, iteration, views, gaussians):
     render_path = os.path.join(model_path, name, "ours_{}".format(iteration), "renders")
@@ -32,19 +33,39 @@ def render_set(model_path, name, iteration, views, gaussians):
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
         rendering = render(view, gaussians)["render"]
         gt = view.original_image[0:3, :, :]
-        torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
-        torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
+        torchvision.utils.save_image(
+            rendering, os.path.join(render_path, "{0:05d}".format(idx) + ".png")
+        )
+        torchvision.utils.save_image(
+            gt, os.path.join(gts_path, "{0:05d}".format(idx) + ".png")
+        )
 
-def render_sets(dataset : ModelParams, iteration : int, skip_train : bool, skip_test : bool):
+
+def render_sets(
+    dataset: ModelParams, iteration: int, skip_train: bool, skip_test: bool
+):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree)
         scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
 
         if not skip_train:
-             render_set(dataset.model_path, "train", scene.loaded_iter, scene.getTrainCameras(), gaussians)
+            render_set(
+                dataset.model_path,
+                "train",
+                scene.loaded_iter,
+                scene.getTrainCameras(),
+                gaussians,
+            )
 
         if not skip_test:
-             render_set(dataset.model_path, "test", scene.loaded_iter, scene.getTestCameras(), gaussians)
+            render_set(
+                dataset.model_path,
+                "test",
+                scene.loaded_iter,
+                scene.getTestCameras(),
+                gaussians,
+            )
+
 
 if __name__ == "__main__":
     # Set up command line argument parser
