@@ -15,7 +15,7 @@ from diff_gaussian_rasterization import GaussianRasterizationSettings, GaussianR
 from gaussian_splatting.scene.gaussian_model import GaussianModel
 from gaussian_splatting.utils.sh_utils import eval_sh
 
-def render(viewpoint_camera, pc : GaussianModel, bg_color : torch.Tensor, scaling_modifier = 1.0):
+def render(viewpoint_camera, pc : GaussianModel, bg_color : torch.Tensor = None, scaling_modifier = 1.0):
     """
     Render the scene.
 
@@ -28,6 +28,9 @@ def render(viewpoint_camera, pc : GaussianModel, bg_color : torch.Tensor, scalin
         screenspace_points.retain_grad()
     except:
         pass
+
+    if bg_color is None:
+        bg_color = torch.tensor([1, 1, 1], dtype=torch.float32, device="cuda")
 
     # Set up rasterization configuration
     tanfovx = math.tan(viewpoint_camera.FoVx * 0.5)

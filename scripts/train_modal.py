@@ -57,7 +57,6 @@ class Dataset():
         self.model_path = ""
         self.images = "images"
         self.resolution = -1
-        self.white_background = False
         self.eval = False
 
 class Optimization():
@@ -78,7 +77,6 @@ class Optimization():
         self.densify_from_iter = 500
         self.densify_until_iter = 15000
         self.densify_grad_threshold = 0.0002
-        self.random_background = False
 
 
 @stub.function(

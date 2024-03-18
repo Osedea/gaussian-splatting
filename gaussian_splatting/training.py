@@ -55,9 +55,6 @@ class Trainer:
             (model_params, first_iter) = torch.load(self._checkpoint_path)
             gaussians.restore(model_params, opt)
 
-        bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
-        background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
-
         iter_start = torch.cuda.Event(enable_timing = True)
         iter_end = torch.cuda.Event(enable_timing = True)
 
@@ -79,9 +76,7 @@ class Trainer:
                 viewpoint_stack = scene.getTrainCameras().copy()
             viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack)-1))
 
-            bg = torch.rand((3), device="cuda") if opt.random_background else background
-
-            render_pkg = render(viewpoint_cam, gaussians, bg)
+            render_pkg = render(viewpoint_cam, gaussians)
             image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
 
             # Loss
@@ -111,7 +106,6 @@ class Trainer:
                     self._testing_iterations,
                     scene,
                     render,
-                    (background)
                 )
                 if (iteration in self._saving_iterations):
                     print("\n[ITER {}] Saving Gaussians".format(iteration))
@@ -127,7 +121,7 @@ class Trainer:
                         size_threshold = 20 if iteration > opt.opacity_reset_interval else None
                         gaussians.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent, size_threshold)
 
-                    if iteration % opt.opacity_reset_interval == 0 or (dataset.white_background and iteration == opt.densify_from_iter):
+                    if iteration % opt.opacity_reset_interval == 0 or iteration == opt.densify_from_iter:
                         gaussians.reset_opacity()
 
                 # Optimizer step
@@ -155,7 +149,7 @@ def prepare_output_and_logger(args):
         cfg_log_f.write(str(Namespace(**vars(args))))
 
 
-def training_report(iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene : Scene, renderFunc, renderArgs):
+def training_report(iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene : Scene, renderFunc):
     # Report test and samples of training set
     if iteration in testing_iterations:
         torch.cuda.empty_cache()
@@ -167,7 +161,7 @@ def training_report(iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, 
                 l1_test = 0.0
                 psnr_test = 0.0
                 for idx, viewpoint in enumerate(config['cameras']):
-                    image = torch.clamp(renderFunc(viewpoint, scene.gaussians, *renderArgs)["render"], 0.0, 1.0)
+                    image = torch.clamp(renderFunc(viewpoint, scene.gaussians)["render"], 0.0, 1.0)
                     gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
                     l1_test += l1_loss(image, gt_image).mean().double()
                     psnr_test += psnr(image, gt_image).mean().double()
