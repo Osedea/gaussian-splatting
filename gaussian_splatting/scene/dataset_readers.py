@@ -17,17 +17,15 @@ import numpy as np
 from PIL import Image
 from plyfile import PlyData, PlyElement
 
-from gaussian_splatting.scene.colmap_loader import (
-    qvec2rotmat,
-    read_extrinsics_binary,
-    read_extrinsics_text,
-    read_intrinsics_binary,
-    read_intrinsics_text,
-    read_points3D_binary,
-    read_points3D_text,
-)
+from gaussian_splatting.scene.colmap_loader import (qvec2rotmat,
+                                                    read_extrinsics_binary,
+                                                    read_extrinsics_text,
+                                                    read_intrinsics_binary,
+                                                    read_intrinsics_text,
+                                                    read_points3D_binary,
+                                                    read_points3D_text)
 from gaussian_splatting.scene.gaussian_model import BasicPointCloud
-from gaussian_splatting.utils.graphics_utils import focal2fov, getWorld2View2
+from gaussian_splatting.utils.graphics import focal2fov, getWorld2View2
 
 
 class CameraInfo(NamedTuple):

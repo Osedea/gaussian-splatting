@@ -13,7 +13,8 @@ import numpy as np
 import torch
 from torch import nn
 
-from gaussian_splatting.utils.graphics_utils import getProjectionMatrix, getWorld2View2
+from gaussian_splatting.utils.graphics import (getProjectionMatrix,
+                                               getWorld2View2)
 
 
 class Camera(nn.Module):

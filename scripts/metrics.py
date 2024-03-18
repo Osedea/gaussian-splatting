@@ -20,8 +20,8 @@ from PIL import Image
 from tqdm import tqdm
 
 from gaussian_splatting.lpipsPyTorch import lpips
-from gaussian_splatting.utils.image_utils import psnr
-from gaussian_splatting.utils.loss_utils import ssim
+from gaussian_splatting.utils.image import psnr
+from gaussian_splatting.utils.loss import ssim
 
 
 def readImages(renders_dir, gt_dir):

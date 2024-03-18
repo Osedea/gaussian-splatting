@@ -12,10 +12,8 @@
 import math
 
 import torch
-from diff_gaussian_rasterization import (
-    GaussianRasterizationSettings,
-    GaussianRasterizer,
-)
+from diff_gaussian_rasterization import (GaussianRasterizationSettings,
+                                         GaussianRasterizer)
 
 from gaussian_splatting.scene.gaussian_model import GaussianModel
 

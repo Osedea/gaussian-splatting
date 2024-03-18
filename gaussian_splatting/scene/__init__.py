@@ -16,11 +16,9 @@ import random
 from gaussian_splatting.arguments import ModelParams
 from gaussian_splatting.scene.dataset_readers import readColmapSceneInfo
 from gaussian_splatting.scene.gaussian_model import GaussianModel
-from gaussian_splatting.utils.camera_utils import (
-    camera_to_JSON,
-    cameraList_from_camInfos,
-)
-from gaussian_splatting.utils.system_utils import searchForMaxIteration
+from gaussian_splatting.utils.camera import (camera_to_JSON,
+                                             cameraList_from_camInfos)
+from gaussian_splatting.utils.system import searchForMaxIteration
 
 
 class Scene:

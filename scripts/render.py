@@ -20,7 +20,7 @@ from tqdm import tqdm
 from gaussian_splatting.arguments import ModelParams, get_combined_args
 from gaussian_splatting.gaussian_renderer import GaussianModel, render
 from gaussian_splatting.scene import Scene
-from gaussian_splatting.utils.general_utils import safe_state
+from gaussian_splatting.utils.general import safe_state
 
 
 def render_set(model_path, name, iteration, views, gaussians):

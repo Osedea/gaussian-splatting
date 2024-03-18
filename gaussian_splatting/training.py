@@ -8,9 +8,9 @@ from tqdm import tqdm
 
 from gaussian_splatting.gaussian_renderer import render
 from gaussian_splatting.scene import GaussianModel, Scene
-from gaussian_splatting.utils.general_utils import safe_state
-from gaussian_splatting.utils.image_utils import psnr
-from gaussian_splatting.utils.loss_utils import l1_loss, ssim
+from gaussian_splatting.utils.general import safe_state
+from gaussian_splatting.utils.image import psnr
+from gaussian_splatting.utils.loss import l1_loss, ssim
 
 
 class Trainer:

@@ -12,8 +12,8 @@
 import numpy as np
 
 from gaussian_splatting.scene.cameras import Camera
-from gaussian_splatting.utils.general_utils import PILtoTorch
-from gaussian_splatting.utils.graphics_utils import fov2focal
+from gaussian_splatting.utils.general import PILtoTorch
+from gaussian_splatting.utils.graphics import fov2focal
 
 WARNED = False
 

@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 
-from gaussian_splatting.lpipsPyTorch.modules.networks import LinLayers, get_network
+from gaussian_splatting.lpipsPyTorch.modules.networks import (LinLayers,
+                                                              get_network)
 from gaussian_splatting.lpipsPyTorch.modules.utils import get_state_dict
 
 
