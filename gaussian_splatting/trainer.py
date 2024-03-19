@@ -1,15 +1,14 @@
 import os
 import uuid
-from argparse import Namespace
 from random import randint
 
 import torch
 from tqdm import tqdm
 
-from gaussian_splatting.gaussian_renderer import render
+from gaussian_splatting.dataset.dataset import Dataset
+from gaussian_splatting.model import GaussianModel
 from gaussian_splatting.optimizer import Optimizer
-from gaussian_splatting.scene import Dataset
-from gaussian_splatting.scene.gaussian_model import GaussianModel
+from gaussian_splatting.render import render
 from gaussian_splatting.utils.general import safe_state
 from gaussian_splatting.utils.image import psnr
 from gaussian_splatting.utils.loss import l1_loss, ssim
@@ -82,7 +81,7 @@ class Trainer:
 
             # Pick a random camera
             if not cameras:
-                cameras = self.dataset.getTrainCameras().copy()
+                cameras = self.dataset.get_train_cameras().copy()
             camera = cameras.pop(randint(0, len(cameras) - 1))
 
             # Render image
@@ -173,10 +172,10 @@ class Trainer:
         # Report test and samples of training set
         torch.cuda.empty_cache()
         validation_configs = {
-            "test": self.dataset.getTestCameras(),
+            "test": self.dataset.get_test_cameras(),
             "train": [
-                self.dataset.getTrainCameras()[
-                    idx % len(self.dataset.getTrainCameras())
+                self.dataset.get_train_cameras()[
+                    idx % len(self.dataset.get_train_cameras())
                 ]
                 for idx in range(5, 30, 5)
             ],

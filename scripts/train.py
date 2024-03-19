@@ -11,7 +11,7 @@
 import sys
 from argparse import ArgumentParser
 
-from gaussian_splatting.training import Trainer
+from gaussian_splatting.trainer import Trainer
 
 if __name__ == "__main__":
     # Set up command line argument parser

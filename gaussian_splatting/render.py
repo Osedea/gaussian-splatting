@@ -15,7 +15,7 @@ import torch
 from diff_gaussian_rasterization import (GaussianRasterizationSettings,
                                          GaussianRasterizer)
 
-from gaussian_splatting.scene.gaussian_model import GaussianModel
+from gaussian_splatting.model import GaussianModel
 
 
 def render(

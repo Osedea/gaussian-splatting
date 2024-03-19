@@ -20,7 +20,6 @@ from torch import nn
 from gaussian_splatting.utils.general import (build_rotation,
                                               build_scaling_rotation,
                                               inverse_sigmoid, strip_symmetric)
-from gaussian_splatting.utils.graphics import BasicPointCloud
 from gaussian_splatting.utils.sh import RGB2SH
 from gaussian_splatting.utils.system import mkdir_p
 

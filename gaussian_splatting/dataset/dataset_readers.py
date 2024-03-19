@@ -17,15 +17,15 @@ import numpy as np
 from PIL import Image
 from plyfile import PlyData, PlyElement
 
-from gaussian_splatting.scene.colmap_loader import (qvec2rotmat,
-                                                    read_extrinsics_binary,
-                                                    read_extrinsics_text,
-                                                    read_intrinsics_binary,
-                                                    read_intrinsics_text,
-                                                    read_points3D_binary,
-                                                    read_points3D_text)
-from gaussian_splatting.scene.gaussian_model import BasicPointCloud
-from gaussian_splatting.utils.graphics import focal2fov, getWorld2View2
+from gaussian_splatting.dataset.colmap_loader import (qvec2rotmat,
+                                                      read_extrinsics_binary,
+                                                      read_extrinsics_text,
+                                                      read_intrinsics_binary,
+                                                      read_intrinsics_text,
+                                                      read_points3D_binary,
+                                                      read_points3D_text)
+from gaussian_splatting.utils.graphics import (BasicPointCloud, focal2fov,
+                                               get_world_2_view)
 
 
 class CameraInfo(NamedTuple):
@@ -49,7 +49,7 @@ class SceneInfo(NamedTuple):
     ply_path: str
 
 
-def getNerfppNorm(cam_info):
+def get_nerfpp_norm(cam_info):
     def get_center_and_diag(cam_centers):
         cam_centers = np.hstack(cam_centers)
         avg_cam_center = np.mean(cam_centers, axis=1, keepdims=True)
@@ -61,7 +61,7 @@ def getNerfppNorm(cam_info):
     cam_centers = []
 
     for cam in cam_info:
-        W2C = getWorld2View2(cam.R, cam.T)
+        W2C = get_world_2_view(cam.R, cam.T)
         C2W = np.linalg.inv(W2C)
         cam_centers.append(C2W[:3, 3:4])
 
@@ -73,7 +73,7 @@ def getNerfppNorm(cam_info):
     return {"translate": translate, "radius": radius}
 
 
-def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
+def read_colmap_cameras(cam_extrinsics, cam_intrinsics, images_folder):
     cam_infos = []
     for idx, key in enumerate(cam_extrinsics):
         sys.stdout.write("\r")
@@ -125,7 +125,7 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
     return cam_infos
 
 
-def fetchPly(path):
+def fetch_ply(path):
     plydata = PlyData.read(path)
     vertices = plydata["vertex"]
     positions = np.vstack([vertices["x"], vertices["y"], vertices["z"]]).T
@@ -134,7 +134,7 @@ def fetchPly(path):
     return BasicPointCloud(points=positions, colors=colors, normals=normals)
 
 
-def storePly(path, xyz, rgb):
+def store_ply(path, xyz, rgb):
     # Define the dtype for the structured array
     dtype = [
         ("x", "f4"),
@@ -160,7 +160,7 @@ def storePly(path, xyz, rgb):
     ply_data.write(path)
 
 
-def readColmapSceneInfo(path, keep_eval, llffhold=8):
+def read_colmap_scene_info(path, keep_eval, llffhold=8):
     try:
         cameras_extrinsic_file = os.path.join(path, "sparse/0", "images.bin")
         cameras_intrinsic_file = os.path.join(path, "sparse/0", "cameras.bin")
@@ -172,7 +172,7 @@ def readColmapSceneInfo(path, keep_eval, llffhold=8):
         cam_extrinsics = read_extrinsics_text(cameras_extrinsic_file)
         cam_intrinsics = read_intrinsics_text(cameras_intrinsic_file)
 
-    cam_infos_unsorted = readColmapCameras(
+    cam_infos_unsorted = read_colmap_cameras(
         cam_extrinsics=cam_extrinsics,
         cam_intrinsics=cam_intrinsics,
         images_folder=os.path.join(path, "images"),
@@ -186,7 +186,7 @@ def readColmapSceneInfo(path, keep_eval, llffhold=8):
         train_cam_infos = cam_infos
         test_cam_infos = []
 
-    nerf_normalization = getNerfppNorm(train_cam_infos)
+    nerf_normalization = get_nerfpp_norm(train_cam_infos)
 
     ply_path = os.path.join(path, "sparse/0/points3D.ply")
     bin_path = os.path.join(path, "sparse/0/points3D.bin")
@@ -199,9 +199,9 @@ def readColmapSceneInfo(path, keep_eval, llffhold=8):
             xyz, rgb, _ = read_points3D_binary(bin_path)
         except:
             xyz, rgb, _ = read_points3D_text(txt_path)
-        storePly(ply_path, xyz, rgb)
+        store_ply(ply_path, xyz, rgb)
     try:
-        pcd = fetchPly(ply_path)
+        pcd = fetch_ply(ply_path)
     except:
         pcd = None
 

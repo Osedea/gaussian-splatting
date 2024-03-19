@@ -11,7 +11,7 @@
 
 import numpy as np
 
-from gaussian_splatting.scene.cameras import Camera
+from gaussian_splatting.dataset.cameras import Camera
 from gaussian_splatting.utils.general import PILtoTorch
 from gaussian_splatting.utils.graphics import fov2focal
 
@@ -65,16 +65,16 @@ def load_camera(resolution, cam_id, cam_info, resolution_scale):
     )
 
 
-def cameraList_from_camInfos(cam_infos, resolution_scale, resolution):
-    camera_list = []
+def load_cameras(cameras_infos, resolution_scale, resolution):
+    cameras = [
+        load_camera(resolution, cam_id, cam_info, resolution_scale)
+        for cam_id, cam_info in enumerate(cameras_infos)
+    ]
 
-    for cam_id, c in enumerate(cam_infos):
-        camera_list.append(load_camera(resolution, cam_id, c, resolution_scale))
-
-    return camera_list
+    return cameras
 
 
-def camera_to_JSON(id, camera: Camera):
+def camera_to_json(_id, camera: Camera):
     Rt = np.zeros((4, 4))
     Rt[:3, :3] = camera.R.transpose()
     Rt[:3, 3] = camera.T
@@ -84,8 +84,9 @@ def camera_to_JSON(id, camera: Camera):
     pos = W2C[:3, 3]
     rot = W2C[:3, :3]
     serializable_array_2d = [x.tolist() for x in rot]
-    camera_entry = {
-        "id": id,
+
+    json_camera = {
+        "id": _id,
         "img_name": camera.image_name,
         "width": camera.width,
         "height": camera.height,
@@ -94,4 +95,5 @@ def camera_to_JSON(id, camera: Camera):
         "fy": fov2focal(camera.FovY, camera.height),
         "fx": fov2focal(camera.FovX, camera.width),
     }
-    return camera_entry
+
+    return json_camera

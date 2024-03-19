@@ -13,8 +13,8 @@ import numpy as np
 import torch
 from torch import nn
 
-from gaussian_splatting.utils.graphics import (getProjectionMatrix,
-                                               getWorld2View2)
+from gaussian_splatting.utils.graphics import (get_projection_matrix,
+                                               get_world_2_view)
 
 
 class Camera(nn.Module):
@@ -62,10 +62,10 @@ class Camera(nn.Module):
         self.scale = scale
 
         self.world_view_transform = (
-            torch.tensor(getWorld2View2(R, T, trans, scale)).transpose(0, 1).cuda()
+            torch.tensor(get_world_2_view(R, T, trans, scale)).transpose(0, 1).cuda()
         )
         self.projection_matrix = (
-            getProjectionMatrix(
+            get_projection_matrix(
                 znear=self.znear, zfar=self.zfar, fovX=self.FoVx, fovY=self.FoVy
             )
             .transpose(0, 1)

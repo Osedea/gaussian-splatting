@@ -13,9 +13,8 @@ import json
 import os
 import random
 
-from gaussian_splatting.scene.dataset_readers import readColmapSceneInfo
-from gaussian_splatting.utils.camera import (camera_to_JSON,
-                                             cameraList_from_camInfos)
+from gaussian_splatting.dataset.dataset_readers import read_colmap_scene_info
+from gaussian_splatting.utils.camera import camera_to_json, load_cameras
 
 
 class Dataset:
@@ -35,7 +34,7 @@ class Dataset:
         self.test_cameras = {}
 
         if os.path.exists(os.path.join(source_path, "sparse")):
-            scene_info = readColmapSceneInfo(source_path, keep_eval)
+            scene_info = read_colmap_scene_info(source_path, keep_eval)
         else:
             assert False, "Could not recognize scene type!"
 
@@ -45,11 +44,11 @@ class Dataset:
 
         for resolution_scale in resolution_scales:
             print("Loading Training Cameras")
-            self.train_cameras[resolution_scale] = cameraList_from_camInfos(
+            self.train_cameras[resolution_scale] = load_cameras(
                 scene_info.train_cameras, resolution_scale, resolution
             )
             print("Loading Test Cameras")
-            self.test_cameras[resolution_scale] = cameraList_from_camInfos(
+            self.test_cameras[resolution_scale] = load_cameras(
                 scene_info.test_cameras, resolution_scale, resolution
             )
 
@@ -67,12 +66,12 @@ class Dataset:
             if self.scene_info.train_cameras:
                 camlist.extend(self.scene_info.train_cameras)
             for id, cam in enumerate(camlist):
-                json_cams.append(camera_to_JSON(id, cam))
+                json_cams.append(camera_to_json(id, cam))
             with open(os.path.join(model_path, "cameras.json"), "w") as file:
                 json.dump(json_cams, file)
 
-    def getTrainCameras(self, scale=1.0):
+    def get_train_cameras(self, scale=1.0):
         return self.train_cameras[scale]
 
-    def getTestCameras(self, scale=1.0):
+    def get_test_cameras(self, scale=1.0):
         return self.test_cameras[scale]

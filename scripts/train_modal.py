@@ -46,7 +46,7 @@ image = (
     timeout=10800,
 )
 def f():
-    from gaussian_splatting.training import Trainer
+    from gaussian_splatting.trainer import Trainer
 
     trainer = Trainer(source_path="/workspace/data/phil_open/5")
     trainer.run()

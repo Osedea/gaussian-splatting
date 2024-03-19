@@ -17,10 +17,11 @@ import torch
 import torchvision
 from tqdm import tqdm
 
-from gaussian_splatting.gaussian_renderer import GaussianModel, render
-from gaussian_splatting.scene import Dataset
+from gaussian_splatting.dataset.dataset import Dataset
+from gaussian_splatting.model import GaussianModel
+from gaussian_splatting.render import render
 from gaussian_splatting.utils.general import safe_state
-from gaussian_splatting.utils.system import searchForMaxIteration
+from gaussian_splatting.utils.system import search_for_max_iteration
 
 
 def render_set(model_path, name, iteration, views, gaussian_model):
@@ -58,7 +59,7 @@ def render_sets(
         gaussian_model = GaussianModel(dataset.sh_degree)
 
         if iteration == -1:
-            iteration = searchForMaxIteration(
+            iteration = search_for_max_iteration(
                 os.path.join(self.model_path, "point_cloud")
             )
         print(f"Loading trained model at iteration {iteration}.")
@@ -76,7 +77,7 @@ def render_sets(
             render_set(
                 model_path,
                 "train",
-                dataset.getTrainCameras(),
+                dataset.get_train_cameras(),
                 gaussian_model,
             )
 
@@ -84,7 +85,7 @@ def render_sets(
             render_set(
                 model_path,
                 "test",
-                dataset.getTestCameras(),
+                dataset.get_test_cameras(),
                 gaussian_model,
             )
 
