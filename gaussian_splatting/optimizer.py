@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 
 from gaussian_splatting.utils.general import get_expon_lr_func
 
@@ -78,11 +79,11 @@ class Optimizer:
     def load_state_dict(self, state_dict):
         self._optimizer.load_state_dict(state_dict)
 
-    def replace_tensor(self, tensor, name):
+    def replace_points(self, tensor, name):
         optimizable_tensors = {}
         for group in self._optimizer.param_groups:
             if group["name"] == name:
-                stored_state = self.optimizer.state.get(group["params"][0], None)
+                stored_state = self._optimizer.state.get(group["params"][0], None)
                 stored_state["exp_avg"] = torch.zeros_like(tensor)
                 stored_state["exp_avg_sq"] = torch.zeros_like(tensor)
 
@@ -94,7 +95,7 @@ class Optimizer:
 
         return optimizable_tensors
 
-    def prune(self, mask):
+    def prune_points(self, mask):
         optimizable_tensors = {}
         for group in self._optimizer.param_groups:
             stored_state = self._optimizer.state.get(group["params"][0], None)
@@ -117,7 +118,7 @@ class Optimizer:
 
         return optimizable_tensors
 
-    def cat_tensors(self, tensors_dict):
+    def concatenate_points(self, tensors_dict):
         optimizable_tensors = {}
         for group in self._optimizer.param_groups:
             assert len(group["params"]) == 1

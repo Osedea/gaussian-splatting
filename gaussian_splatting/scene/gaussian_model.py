@@ -17,7 +17,8 @@ from plyfile import PlyData, PlyElement
 from simple_knn._C import distCUDA2
 from torch import nn
 
-from gaussian_splatting.utils.general import (build_scaling_rotation,
+from gaussian_splatting.utils.general import (build_rotation,
+                                              build_scaling_rotation,
                                               inverse_sigmoid, strip_symmetric)
 from gaussian_splatting.utils.graphics import BasicPointCloud
 from gaussian_splatting.utils.sh import RGB2SH
@@ -34,7 +35,7 @@ def build_covariance_from_scaling_rotation(scaling, scaling_modifier, rotation):
 
 class GaussianModel:
 
-    def __init__(self, sh_degree: int = 3, percent_dense=0.01):
+    def __init__(self, sh_degree: int = 3):
         self.active_sh_degree = 0
         self.max_sh_degree = sh_degree
 
@@ -48,8 +49,6 @@ class GaussianModel:
 
         self.xyz_gradient_accum = torch.empty(0)
         self.denom = torch.empty(0)
-
-        self.percent_dense = percent_dense
 
         self.scaling_activation = torch.exp
         self.scaling_inverse_activation = torch.log
@@ -111,8 +110,19 @@ class GaussianModel:
     def get_opacity(self):
         return self.opacity_activation(self._opacity)
 
-    def set_opacity(self, opacity):
-        self._opacity = opacity
+    def set_optimizable_tensors(self, optimizable_tensors):
+        if "xyz" in optimizable_tensors:
+            self._xyz = optimizable_tensors["xyz"]
+        if "f_dc" in optimizable_tensors:
+            self._features_dc = optimizable_tensors["f_dc"]
+        if "f_rest" in optimizable_tensors:
+            self._features_rest = optimizable_tensors["f_rest"]
+        if "opacity" in optimizable_tensors:
+            self._opacity = optimizable_tensors["opacity"]
+        if "scaling" in optimizable_tensors:
+            self._scaling = optimizable_tensors["scaling"]
+        if "rotation" in optimizable_tensors:
+            self._rotation = optimizable_tensors["rotation"]
 
     def get_covariance(self, scaling_modifier=1):
         return self.covariance_activation(
@@ -167,8 +177,8 @@ class GaussianModel:
         self._scaling = nn.Parameter(scales.requires_grad_(True))
         self._rotation = nn.Parameter(rots.requires_grad_(True))
         self._opacity = nn.Parameter(opacities.requires_grad_(True))
-        self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
 
+        self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
         self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
         self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
 
@@ -303,16 +313,100 @@ class GaussianModel:
 
         self.active_sh_degree = self.max_sh_degree
 
-    def set_optimizable_tensors(self, optimizable_tensors):
-        self.set_xyz = optimizable_tensors["xyz"]
-        self._features_dc = optimizable_tensors["f_dc"]
-        self._features_rest = optimizable_tensors["f_rest"]
-        self._opacity = optimizable_tensors["opacity"]
-        self._scaling = optimizable_tensors["scaling"]
-        self._rotation = optimizable_tensors["rotation"]
+    def reset_opacity(self):
+        new_opacity = inverse_sigmoid(
+            torch.min(self._opacity, torch.ones_like(self._opacity) * 0.01)
+        )
 
-    def add_densification_stats(self, viewspace_point_tensor, update_filter):
+        return new_opacity
+
+    def split_points(self, gradient_threshold, percent_dense):
+        gradients = self.xyz_gradient_accum / self.denom
+        gradients[gradients.isnan()] = 0.0
+
+        # Extract large Gaussians in over-reconstruction regions with high variance gradients
+        split_mask = torch.logical_and(
+            torch.where(
+                gradients.detach().squeeze() >= gradient_threshold, True, False
+            ),
+            torch.max(self.get_scaling, dim=1).values
+            > percent_dense * self.camera_extent,
+        )
+
+        stds = self.get_scaling[split_mask].repeat(2, 1)
+        means = torch.zeros((stds.size(0), 3), device="cuda")
+        samples = torch.normal(mean=means, std=stds)
+        rots = build_rotation(self._rotation[split_mask]).repeat(2, 1, 1)
+
+        new_xyz = torch.bmm(rots, samples.unsqueeze(-1)).squeeze(-1) + self._xyz[
+            split_mask
+        ].repeat(2, 1)
+        new_scaling = self.scaling_inverse_activation(
+            self.get_scaling[split_mask].repeat(2, 1) / (0.8 * 2)
+        )
+        new_rotation = self._rotation[split_mask].repeat(2, 1)
+        new_features_dc = self._features_dc[split_mask].repeat(2, 1, 1)
+        new_features_rest = self._features_rest[split_mask].repeat(2, 1, 1)
+        new_opacity = self._opacity[split_mask].repeat(2, 1)
+
+        new_points = {
+            "xyz": new_xyz,
+            "f_dc": new_features_dc,
+            "f_rest": new_features_rest,
+            "opacity": new_opacity,
+            "scaling": new_scaling,
+            "rotation": new_rotation,
+        }
+
+        return new_points, split_mask
+
+    def clone_points(self, gradient_threshold, percent_dense):
+        gradients = self.xyz_gradient_accum / self.denom
+        gradients[gradients.isnan()] = 0.0
+
+        # Extract small Gaussians in under-reconstruction regions with high variance gradients
+        clone_mask = torch.logical_and(
+            torch.where(
+                torch.norm(gradients, dim=-1) >= gradient_threshold, True, False
+            ),
+            torch.max(self.get_scaling, dim=1).values
+            <= percent_dense * self.camera_extent,
+        )
+
+        new_xyz = self._xyz[clone_mask]
+        new_features_dc = self._features_dc[clone_mask]
+        new_features_rest = self._features_rest[clone_mask]
+        new_opacity = self._opacity[clone_mask]
+        new_scaling = self._scaling[clone_mask]
+        new_rotation = self._rotation[clone_mask]
+
+        new_points = {
+            "xyz": new_xyz,
+            "f_dc": new_features_dc,
+            "f_rest": new_features_rest,
+            "opacity": new_opacity,
+            "scaling": new_scaling,
+            "rotation": new_rotation,
+        }
+
+        return new_points, clone_mask
+
+    def update_stats(self, viewspace_point_tensor, update_filter, radii):
+        self.max_radii2D[update_filter] = torch.max(
+            self.max_radii2D[update_filter],
+            radii[update_filter],
+        )
         self.xyz_gradient_accum[update_filter] += torch.norm(
             viewspace_point_tensor.grad[update_filter, :2], dim=-1, keepdim=True
         )
         self.denom[update_filter] += 1
+
+    def mask_stats(self, mask):
+        self.max_radii2D = self.max_radii2D[mask]
+        self.xyz_gradient_accum = self.xyz_gradient_accum[mask]
+        self.denom = self.denom[mask]
+
+    def reset_stats(self):
+        self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
+        self.xyz_gradient_accum = torch.zeros((self._xyz.shape[0], 1), device="cuda")
+        self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
