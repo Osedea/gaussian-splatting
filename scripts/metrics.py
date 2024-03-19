@@ -19,7 +19,7 @@ import torchvision.transforms.functional as tf
 from PIL import Image
 from tqdm import tqdm
 
-from gaussian_splatting.lpipsPyTorch import lpips
+from gaussian_splatting.metrics.lpipsPyTorch import lpips
 from gaussian_splatting.utils.image import psnr
 from gaussian_splatting.utils.loss import ssim
 
