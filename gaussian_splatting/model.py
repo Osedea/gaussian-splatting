@@ -55,6 +55,8 @@ class GaussianModel:
         self.inverse_opacity_activation = inverse_sigmoid
         self.rotation_activation = torch.nn.functional.normalize
 
+        self.camera_extent = 1.
+
     def state_dict(self):
         state_dict = (
             self.active_sh_degree,
@@ -67,6 +69,7 @@ class GaussianModel:
             self.max_radii2D,
             self.xyz_gradient_accum,
             self.denom,
+            self.camera_extent,
         )
 
         return state_dict
@@ -133,9 +136,11 @@ class GaussianModel:
 
     def initialize(self, dataset):
         self.camera_extent = dataset.scene_info.nerf_normalization["radius"]
-
         point_cloud = dataset.scene_info.point_cloud
 
+        self.initialize_from_point_cloud(point_cloud)
+
+    def initialize_from_point_cloud(self, point_cloud):
         fused_point_cloud = torch.tensor(np.asarray(point_cloud.points)).float().cuda()
         fused_color = RGB2SH(
             torch.tensor(np.asarray(point_cloud.colors)).float().cuda()

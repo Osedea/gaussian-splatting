@@ -14,7 +14,8 @@ from gaussian_splatting.utils.image import psnr
 from gaussian_splatting.utils.loss import l1_loss, ssim
 
 
-class Trainer:
+
+class ColmapFreeTrainer:
     def __init__(
         self,
         source_path,
@@ -22,74 +23,40 @@ class Trainer:
         resolution=-1,
         sh_degree=3,
         checkpoint_path=None,
-        output_path=None,
-        min_num_cameras=15,
     ):
-        self.model_path = self._prepare_model_path(output_path)
+        self._model_path = self._prepare_model_path()
 
-        self.dataset = Dataset(source_path, keep_eval=keep_eval, resolution=resolution)
-        if len(self.dataset.get_train_cameras()) <= min_num_cameras:
-            raise ValueError("Not enough cameras to reconstruct the scene!")
-        self.dataset.save_scene_info(self.model_path)
+        self.dataset = ImageDataset(images_path=source_path)
 
-        self.gaussian_model = GaussianModel(sh_degree)
-        self.gaussian_model.initialize(self.dataset)
-
-        self.optimizer = Optimizer(self.gaussian_model)
-
-        self._checkpoint_path = checkpoint_path
-
-        self._debug = True
-
-        self._iterations = 10000
-        self._testing_iterations = [20, 250, 1000, 2500, 7000, 30000]
-        self._saving_iterations = [20, 250, 1000, 2500, 3500, 4500, 5000, 7000, 10000]
-        self._checkpoint_iterations = []
-
-        # Loss function
-        self._lambda_dssim = 0.2
-
-        # Densification and pruning
-        self._opacity_reset_interval = 30000
-        self._min_opacity = 0.005
-        self._max_screen_size = 20
-        self._percent_dense = 0.01
-        self._densification_interval = 100
-        self._densification_iteration_start = 500
-        self._densification_iteration_stop = 15000
-        self._densification_grad_threshold = 0.0002
+        self.global_3DGS = GaussianModel(sh_degree)
+        self.global_3DGS.initialize(self.dataset)
+        self.global_3DGS_optimizer = Optimizer(self.global_3DGS)
 
         safe_state()
 
-    def run(self):
-        first_iter = 0
-        if self._checkpoint_path:
-            (
-                gaussian_model_state_dict,
-                self.optimizer_state_dict,
-                first_iter,
-            ) = torch.load(checkpoint_path)
-            self.gaussian_model.load_state_dict(gaussian_model_state_dict)
-            self.optimizer.load_state_dict(optmizer_state_dict)
 
-        ema_loss_for_log = 0.0
-        cameras = None
+    def run(self):
         progress_bar = tqdm(
-            range(first_iter, self._iterations), desc="Training progress"
+            range(len(self.dataset)), desc="Training progress"
         )
-        first_iter += 1
-        for iteration in range(first_iter, self._iterations + 1):
-            self.optimizer.update_learning_rate(iteration)
+        for iteration in range(len(dataset)):
+
+            I_t = self.dataset[i]
+            I_t_plus_1 = self.dataset[i + 1]
+
+            local_3DGS_trainer = LocalTrainer()
+
+            #self.optimizer.update_learning_rate(iteration)
 
             # Every 1000 its we increase the levels of SH up to a maximum degree
-            if iteration % 1000 == 0:
-                self.gaussian_model.oneupSHdegree()
+            # if iteration % 1000 == 0:
+            #    self.gaussian_model.oneupSHdegree()
 
             # Pick a random camera
-            if not cameras:
-                cameras = self.dataset.get_train_cameras().copy()
-            camera = cameras.pop(randint(0, len(cameras) - 1))
-            import pdb; pdb.set_trace()
+            #if not cameras:
+            #    cameras = self.dataset.get_train_cameras().copy()
+            #camera = cameras.pop(randint(0, len(cameras) - 1))
+
             # Render image
             rendered_image, viewspace_point_tensor, visibility_filter, radii = render(
                 camera, self.gaussian_model
@@ -102,16 +69,10 @@ class Trainer:
                 1.0 - ssim(rendered_image, gt_image)
             )
 
+            # try:
             loss.backward()
-
-            if iteration in self._saving_iterations:
-                print("\n[ITER {}] Saving Gaussians".format(iteration))
-                point_cloud_path = os.path.join(
-                    self.model_path, "point_cloud/iteration_{}".format(iteration)
-                )
-                self.gaussian_model.save_ply(
-                    os.path.join(point_cloud_path, "point_cloud.ply")
-                )
+            # except Exception:
+            #    import pdb; pdb.set_trace()
 
             with torch.no_grad():
                 # Progress bar
@@ -123,8 +84,17 @@ class Trainer:
                     progress_bar.close()
 
                 # Log and save
-                # if iteration in self._testing_iterations:
-                #    self._report(iteration)
+                if iteration in self._testing_iterations:
+                    self._report(iteration)
+
+                if iteration in self._saving_iterations:
+                    print("\n[ITER {}] Saving Gaussians".format(iteration))
+                    point_cloud_path = os.path.join(
+                        self.model_path, "point_cloud/iteration_{}".format(iteration)
+                    )
+                    self.gaussian_model.save_ply(
+                        os.path.join(point_cloud_path, "point_cloud.ply")
+                    )
 
                 # Densification
                 if iteration < self._densification_iteration_stop:
@@ -161,12 +131,9 @@ class Trainer:
                         self.model_path + "/chkpnt" + str(iteration) + ".pth",
                     )
 
-    def _prepare_model_path(self, output_path):
+    def _prepare_model_path(self):
         unique_str = str(uuid.uuid4())
-        model_path = os.path.join(
-            "./output/" if output_path is None else f"./output/{output_path}/",
-            unique_str[0:10],
-        )
+        model_path = os.path.join("./output/", unique_str[0:10])
 
         # Set up output folder
         print("Output folder: {}".format(model_path))
@@ -187,7 +154,7 @@ class Trainer:
             ],
         }
 
-        for config_name, cameras in validation_configs.items():
+        for config_name, cameras in validation_configs:
             if not cameras or len(cameras) == 0:
                 continue
 

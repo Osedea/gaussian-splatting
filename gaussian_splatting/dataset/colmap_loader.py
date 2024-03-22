@@ -251,6 +251,7 @@ def read_extrinsics_binary(path_to_model_file):
                 xys=xys,
                 point3D_ids=point3D_ids,
             )
+
     return images
 
 
