@@ -89,7 +89,7 @@ class Trainer:
             if not cameras:
                 cameras = self.dataset.get_train_cameras().copy()
             camera = cameras.pop(randint(0, len(cameras) - 1))
-            import pdb; pdb.set_trace()
+
             # Render image
             rendered_image, viewspace_point_tensor, visibility_filter, radii = render(
                 camera, self.gaussian_model

@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from transformers import pipeline
 from tqdm import tqdm
@@ -5,6 +6,7 @@ from tqdm import tqdm
 import torch
 import torchvision
 
+from gaussian_splatting.utils.general import safe_state
 from gaussian_splatting.model import GaussianModel
 from gaussian_splatting.optimizer import Optimizer
 from gaussian_splatting.render import render
@@ -22,7 +24,11 @@ class LocalTrainer(Trainer):
 
         image = PILtoTorch(image)
 
-        initial_point_cloud = self._get_initial_point_cloud(image, depth_estimation)
+        initial_point_cloud = self._get_initial_point_cloud(
+            image,
+            depth_estimation,
+            step=10
+        )
 
         self.gaussian_model = GaussianModel(sh_degree)
         self.gaussian_model.initialize_from_point_cloud(initial_point_cloud)
@@ -32,10 +38,10 @@ class LocalTrainer(Trainer):
 
         self._camera = self._get_orthogonal_camera(image)
 
-        self._iterations = 10000
+        self._iterations = 1000
         self._lambda_dssim = 0.2
 
-        self._opacity_reset_interval = 3000
+        self._opacity_reset_interval = 1000
         self._min_opacity = 0.005
         self._max_screen_size = 20
         self._percent_dense = 0.01
@@ -46,18 +52,20 @@ class LocalTrainer(Trainer):
 
         self._debug = True
 
+        safe_state(seed=2234)
+
     def run(self):
         progress_bar = tqdm(
             range(self._iterations), desc="Training progress"
         )
         for iteration in range(self._iterations):
-            self.optimizer.update_learning_rate(iteration)
+            # self.optimizer.update_learning_rate(iteration)
             rendered_image, viewspace_point_tensor, visibility_filter, radii = render(
                 self._camera, self.gaussian_model
             )
 
-            if iteration == 0:
-                torchvision.utils.save_image(rendered_image, f"rendered_{iteration}.png")
+            if iteration % 100 == 0:
+                torchvision.utils.save_image(rendered_image, f"artifacts/rendered_{iteration}.png")
 
             gt_image = self._camera.original_image.cuda()
             Ll1 = l1_loss(rendered_image, gt_image)
@@ -77,30 +85,34 @@ class LocalTrainer(Trainer):
                         viewspace_point_tensor, visibility_filter, radii
                     )
 
-            #        if (
-            #            iteration >= self._densification_iteration_start
-            #            and iteration % self._densification_interval == 0
-            #        ):
-            #            self._densify_and_prune(
-            #                iteration > self._opacity_reset_interval
-            #            )
+                    if (
+                        iteration >= self._densification_iteration_start
+                        and iteration % self._densification_interval == 0
+                    ):
+                        self._densify_and_prune(
+                            iteration > self._opacity_reset_interval
+                        )
 
                 # Reset opacity interval
-            #    if iteration % self._opacity_reset_interval == 0:
-            #        self._reset_opacity()
+                if iteration > 0 and iteration % self._opacity_reset_interval == 0:
+                    print("Reset Opacity")
+                    self._reset_opacity()
 
-            progress_bar.set_postfix({"Loss": f"{loss:.{5}f}"})
+            progress_bar.set_postfix({
+                "Loss": f"{loss:.{5}f}",
+                "Num_visible": f"{visibility_filter.int().sum().item()}"
+            })
             progress_bar.update(1)
 
-        torchvision.utils.save_image(rendered_image, f"rendered_{iteration}.png")
-        torchvision.utils.save_image(gt_image, f"gt.png")
+        torchvision.utils.save_image(rendered_image, f"artifacts/rendered_{iteration}.png")
+        torchvision.utils.save_image(gt_image, f"artifacts/gt.png")
 
     def _get_orthogonal_camera(self, image):
         camera = Camera(
             R=np.array([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]]),
-            T=np.array([0.5, 0.5, -1]),
-            FoVx=1.,
-            FoVy=1.,
+            T=np.array([-0.5, -0.5, 1.]),
+            FoVx=2 * math.atan(0.5),
+            FoVy=2 * math.atan(0.5),
             image=image,
             gt_alpha_mask=None,
             image_name="patate",
@@ -114,15 +126,19 @@ class LocalTrainer(Trainer):
         # Frame and depth_estimation width do not exactly match.
         _, w, h = depth_estimation.shape
 
+        _min_depth = depth_estimation.min()
+        _max_depth = depth_estimation.max()
+
         half_step = step // 2
         points, colors, normals = [], [], []
         for x in range(step, w - step, step):
             for y in range(step, h - step, step):
-                # Normalized h, w
+                _depth = depth_estimation[0, x, y].item()
+                # Normalized points
                 points.append([
-                    x / w,
                     y / h,
-                    depth_estimation[0, x, y].item()
+                    x / w,
+                    (_depth - _min_depth) / (_max_depth - _min_depth)
                 ])
                 # Average RGB color in the window color around selected pixel
                 colors.append(

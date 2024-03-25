@@ -76,7 +76,6 @@ def render(
         colors_precomp=None,
         cov3D_precomp=None,
     )
-
     # Those Gaussians that were frustum culled or had a radius of 0 were not visible.
     # They will be excluded from value updates used in the splitting criteria.
     return (
