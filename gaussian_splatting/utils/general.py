@@ -19,7 +19,7 @@ def inverse_sigmoid(x):
     return torch.log(x / (1 - x))
 
 
-def PILtoTorch(pil_image, resolution = None):
+def PILtoTorch(pil_image, resolution=None):
     if resolution is not None:
         pil_image = pil_image.resize(resolution)
 
@@ -31,6 +31,7 @@ def PILtoTorch(pil_image, resolution = None):
     image = image.permute(2, 0, 1)
 
     return image
+
 
 def get_expon_lr_func(
     lr_init, lr_final, lr_delay_steps=0, lr_delay_mult=1.0, max_steps=1000000

@@ -1,9 +1,9 @@
-from PIL import Image
 from pathlib import Path
-from gaussian_splatting.utils.general import PILtoTorch
+
+from PIL import Image
+
 
 class ImageDataset:
-
     def __init__(self, images_path: Path):
         self._images_paths = [f for f in images_path.iterdir()]
         self._images_paths.sort(key=lambda f: int(f.stem))
@@ -16,4 +16,3 @@ class ImageDataset:
 
     def __len__(self):
         return len(self._image_paths)
-

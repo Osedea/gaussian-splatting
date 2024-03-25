@@ -1,33 +1,30 @@
 import math
-from matplotlib import pyplot as plt
-import numpy as np
-from transformers import pipeline
-from tqdm import tqdm
 
+import numpy as np
 import torch
 import torchvision
+from matplotlib import pyplot as plt
+from tqdm import tqdm
+from transformers import pipeline
 
-from gaussian_splatting.utils.general import safe_state
+from gaussian_splatting.dataset.cameras import Camera
 from gaussian_splatting.model import GaussianModel
 from gaussian_splatting.optimizer import Optimizer
 from gaussian_splatting.render import render
-from gaussian_splatting.utils.graphics import BasicPointCloud
-from gaussian_splatting.utils.general import PILtoTorch
-from gaussian_splatting.dataset.cameras import Camera
-from gaussian_splatting.utils.loss import l1_loss, ssim
 from gaussian_splatting.trainer import Trainer
+from gaussian_splatting.utils.general import PILtoTorch, safe_state
+from gaussian_splatting.utils.graphics import BasicPointCloud
+from gaussian_splatting.utils.loss import l1_loss, ssim
 
 
-class LocalTrainer(Trainer):
-    def __init__(self, image, sh_degree: int = 3):
+class LocalInitializationTrainer(Trainer):
+    def __init__(self, image, sh_degree: int = 3, iterations: int = 10000):
         DPT = self._load_DPT()
         depth_estimation = DPT(image)["predicted_depth"]
 
         image = PILtoTorch(image)
         initial_point_cloud = self._get_initial_point_cloud(
-            image,
-            depth_estimation,
-            step=25
+            image, depth_estimation, step=25
         )
 
         self.gaussian_model = GaussianModel(sh_degree)
@@ -36,9 +33,9 @@ class LocalTrainer(Trainer):
 
         self.optimizer = Optimizer(self.gaussian_model)
 
-        self._camera = self._get_orthogonal_camera(image)
+        self.camera = self._get_orthogonal_camera(image)
 
-        self._iterations = 10000
+        self._iterations = iterations
         self._lambda_dssim = 0.2
 
         # Densification and pruning
@@ -56,33 +53,33 @@ class LocalTrainer(Trainer):
         safe_state(seed=2234)
 
     def run(self):
-        progress_bar = tqdm(
-            range(self._iterations), desc="Training progress"
-        )
+        progress_bar = tqdm(range(self._iterations), desc="Initialization")
 
         best_loss, best_iteration, losses = None, 0, []
         for iteration in range(self._iterations):
             self.optimizer.update_learning_rate(iteration)
             rendered_image, viewspace_point_tensor, visibility_filter, radii = render(
-                self._camera, self.gaussian_model
+                self.camera, self.gaussian_model
             )
 
             if iteration % 100 == 0:
                 plt.cla()
                 plt.plot(losses)
-                plt.yscale('log')
-                plt.savefig('artifacts/losses.png')
+                plt.yscale("log")
+                plt.savefig("artifacts/local/init/losses.png")
 
-                torchvision.utils.save_image(rendered_image, f"artifacts/rendered_{iteration}.png")
+                torchvision.utils.save_image(
+                    rendered_image, f"artifacts/local/init/rendered_{iteration}.png"
+                )
 
-            gt_image = self._camera.original_image.cuda()
+            gt_image = self.camera.original_image.cuda()
             Ll1 = l1_loss(rendered_image, gt_image)
             loss = (1.0 - self._lambda_dssim) * Ll1 + self._lambda_dssim * (
                 1.0 - ssim(rendered_image, gt_image)
             )
             if best_loss is None or best_loss > loss:
                 best_loss = loss.cpu().item()
-                best_iteartion = iteration
+                best_iteration = iteration
             losses.append(loss.cpu().item())
 
             loss.backward()
@@ -110,22 +107,25 @@ class LocalTrainer(Trainer):
                     print("Reset Opacity")
                     self._reset_opacity()
 
-            progress_bar.set_postfix({
-                "Loss": f"{loss:.{5}f}",
-                "Num_visible":
-                f"{visibility_filter.int().sum().item()}/{len(visibility_filter)}"
-            })
+            progress_bar.set_postfix(
+                {
+                    "Loss": f"{loss:.{5}f}",
+                    "Num_visible": f"{visibility_filter.int().sum().item()}/{len(visibility_filter)}",
+                }
+            )
             progress_bar.update(1)
 
         print(f"Training done. Best loss = {best_loss} at iteration {best_iteration}.")
 
-        torchvision.utils.save_image(rendered_image, f"artifacts/rendered_{iteration}.png")
-        torchvision.utils.save_image(gt_image, f"artifacts/gt.png")
+        torchvision.utils.save_image(
+            rendered_image, f"artifacts/local/init/rendered_{iteration}.png"
+        )
+        torchvision.utils.save_image(gt_image, f"artifacts/local/init/gt.png")
 
     def _get_orthogonal_camera(self, image):
         camera = Camera(
-            R=np.array([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]]),
-            T=np.array([-0.5, -0.5, 1.]),
+            R=np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+            T=np.array([-0.5, -0.5, 1.0]),
             FoVx=2 * math.atan(0.5),
             FoVy=2 * math.atan(0.5),
             image=image,
@@ -150,20 +150,24 @@ class LocalTrainer(Trainer):
             for y in range(step, h - step, step):
                 _depth = depth_estimation[0, x, y].item()
                 # Normalized points
-                points.append([
-                    y / h,
-                    x / w,
-                    (_depth - _min_depth) / (_max_depth - _min_depth)
-                ])
+                points.append(
+                    [y / h, x / w, (_depth - _min_depth) / (_max_depth - _min_depth)]
+                )
                 # Average RGB color in the window color around selected pixel
                 colors.append(
                     frame[
-                        :,
-                        x - half_step: x + half_step,
-                        y - half_step: y + half_step
-                    ].mean(axis=[1, 2]).tolist()
+                        :, x - half_step : x + half_step, y - half_step : y + half_step
+                    ]
+                    .mean(axis=[1, 2])
+                    .tolist()
                 )
-                normals.append([0., 0., 0.,])
+                normals.append(
+                    [
+                        0.0,
+                        0.0,
+                        0.0,
+                    ]
+                )
 
         point_cloud = BasicPointCloud(
             points=np.array(points),
@@ -178,5 +182,3 @@ class LocalTrainer(Trainer):
         depth_estimator = pipeline("depth-estimation", model=checkpoint)
 
         return depth_estimator
-
-

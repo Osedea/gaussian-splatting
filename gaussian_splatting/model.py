@@ -55,7 +55,7 @@ class GaussianModel:
         self.inverse_opacity_activation = inverse_sigmoid
         self.rotation_activation = torch.nn.functional.normalize
 
-        self.camera_extent = 1.
+        self.camera_extent = 1.0
 
     def state_dict(self):
         state_dict = (

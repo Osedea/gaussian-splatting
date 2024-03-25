@@ -1,18 +1,15 @@
 import os
 import uuid
-from random import randint
 
 import torch
 from tqdm import tqdm
 
-from gaussian_splatting.dataset.dataset import Dataset
 from gaussian_splatting.model import GaussianModel
 from gaussian_splatting.optimizer import Optimizer
 from gaussian_splatting.render import render
 from gaussian_splatting.utils.general import safe_state
 from gaussian_splatting.utils.image import psnr
 from gaussian_splatting.utils.loss import l1_loss, ssim
-
 
 
 class ColmapFreeTrainer:
@@ -34,28 +31,24 @@ class ColmapFreeTrainer:
 
         safe_state()
 
-
     def run(self):
-        progress_bar = tqdm(
-            range(len(self.dataset)), desc="Training progress"
-        )
+        progress_bar = tqdm(range(len(self.dataset)), desc="Training progress")
         for iteration in range(len(dataset)):
-
             I_t = self.dataset[i]
             I_t_plus_1 = self.dataset[i + 1]
 
             local_3DGS_trainer = LocalTrainer()
 
-            #self.optimizer.update_learning_rate(iteration)
+            # self.optimizer.update_learning_rate(iteration)
 
             # Every 1000 its we increase the levels of SH up to a maximum degree
             # if iteration % 1000 == 0:
             #    self.gaussian_model.oneupSHdegree()
 
             # Pick a random camera
-            #if not cameras:
+            # if not cameras:
             #    cameras = self.dataset.get_train_cameras().copy()
-            #camera = cameras.pop(randint(0, len(cameras) - 1))
+            # camera = cameras.pop(randint(0, len(cameras) - 1))
 
             # Render image
             rendered_image, viewspace_point_tensor, visibility_filter, radii = render(
