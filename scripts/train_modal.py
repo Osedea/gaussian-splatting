@@ -1,6 +1,6 @@
 from modal import Image, Mount, NetworkFileSystem, Stub, Volume
 
-stub = Stub()
+stub = Stub("isabelle.halo.gaussian_splatting")
 
 volume_model = Volume.from_name("model_registry", create_if_missing=True)
 volume_data = NetworkFileSystem.from_name("data", create_if_missing=True)
