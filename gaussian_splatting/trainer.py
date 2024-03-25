@@ -220,7 +220,9 @@ class Trainer:
         # Prune transparent and large gaussians.
         prune_mask = (self.gaussian_model.get_opacity < self._min_opacity).squeeze()
         if prune_big_points:
+            # Viewspace
             big_points_vs = self.gaussian_model.max_radii2D > self._max_screen_size
+            # World space
             big_points_ws = (
                 self.gaussian_model.get_scaling.max(dim=1).values
                 > 0.1 * self.gaussian_model.camera_extent

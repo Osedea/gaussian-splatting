@@ -12,7 +12,5 @@ def main():
     local_trainer.run()
 
 
-    import pdb; pdb.set_trace()
-
 if __name__ == "__main__":
     main()
