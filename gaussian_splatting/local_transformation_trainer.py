@@ -105,6 +105,7 @@ class LocalTransformationTrainer(Trainer):
         progress_bar = tqdm(range(self._iterations), desc="Transformation")
 
         best_loss, best_iteration, losses = None, 0, []
+        best_xyz = None
         for iteration in range(self._iterations):
             xyz = self.transformation_model(self.xyz)
             self.gaussian_model.set_optimizable_tensors({"xyz": xyz})
@@ -131,6 +132,7 @@ class LocalTransformationTrainer(Trainer):
             if best_loss is None or best_loss > loss:
                 best_loss = loss.cpu().item()
                 best_iteration = iteration
+                best_xyz = xyz
             losses.append(loss.cpu().item())
 
             loss.backward()
@@ -148,9 +150,10 @@ class LocalTransformationTrainer(Trainer):
         print(
             f"Training done. Best loss = {best_loss:.{5}f} at iteration {best_iteration}."
         )
+        self.gaussian_model.set_optimizable_tensors({"xyz": best_xyz})
 
         torchvision.utils.save_image(
-            rendered_image, f"artifacts/local/transfo/rendered_{iteration}.png"
+            rendered_image, f"artifacts/local/transfo/rendered_best.png"
         )
         torchvision.utils.save_image(gt_image, f"artifacts/local/transfo/gt.png")
 
