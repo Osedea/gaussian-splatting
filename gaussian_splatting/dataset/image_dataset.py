@@ -15,4 +15,4 @@ class ImageDataset:
         return image
 
     def __len__(self):
-        return len(self._image_paths)
+        return len(self._images_paths)

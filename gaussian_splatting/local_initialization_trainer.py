@@ -115,7 +115,10 @@ class LocalInitializationTrainer(Trainer):
             )
             progress_bar.update(1)
 
-        print(f"Training done. Best loss = {best_loss} at iteration {best_iteration}.")
+        progress_bar.close()
+        print(
+            f"Training done. Best loss = {best_loss:.{5}f} at iteration {best_iteration}."
+        )
 
         torchvision.utils.save_image(
             rendered_image, f"artifacts/local/init/rendered_{iteration}.png"
