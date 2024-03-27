@@ -24,9 +24,12 @@ class PhotometricLoss:
         l1_value = l1_loss(network_output, gt)
         ssim_value = ssim(network_output, gt)
 
-        loss = (1.0 - self._lambda_dssim) * l1_value + self._lambda_dssim * (1.0 - ssim_value)
+        loss = (1.0 - self._lambda_dssim) * l1_value + self._lambda_dssim * (
+            1.0 - ssim_value
+        )
 
         return loss
+
 
 def l1_loss(network_output, gt):
     return torch.abs((network_output - gt)).mean()

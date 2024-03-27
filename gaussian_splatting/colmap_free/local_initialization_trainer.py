@@ -82,7 +82,6 @@ class LocalInitializationTrainer(Trainer):
                 best_iteration = iteration
             losses.append(loss.cpu().item())
 
-
             with torch.no_grad():
                 # Densification
                 if iteration < self._densification_iteration_stop:

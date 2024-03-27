@@ -1,19 +1,19 @@
+import copy
 from pathlib import Path
 
-import copy
 import numpy as np
-import torchvision
 import torch
+import torchvision
 from tqdm import tqdm
 
-from gaussian_splatting.dataset.cameras import Camera
-from gaussian_splatting.render import render
-from gaussian_splatting.dataset.image_dataset import ImageDataset
-from gaussian_splatting.local_initialization_trainer import \
+from gaussian_splatting.colmap_free.global_trainer import GlobalTrainer
+from gaussian_splatting.colmap_free.local_initialization_trainer import \
     LocalInitializationTrainer
-from gaussian_splatting.local_transformation_trainer import \
+from gaussian_splatting.colmap_free.local_transformation_trainer import \
     LocalTransformationTrainer
-from gaussian_splatting.global_trainer import GlobalTrainer
+from gaussian_splatting.dataset.cameras import Camera
+from gaussian_splatting.dataset.image_dataset import ImageDataset
+from gaussian_splatting.render import render
 from gaussian_splatting.utils.general import PILtoTorch
 from gaussian_splatting.utils.loss import PhotometricLoss
 
@@ -23,6 +23,7 @@ def main():
     iteration_step_size = 5
     initialization_iterations = 50
     transformation_iterations = 50
+    global_iterations = 50
 
     photometric_loss = PhotometricLoss(lambda_dssim=0.2)
     dataset = ImageDataset(images_path=Path("data/phil/1/input/"))
@@ -32,16 +33,16 @@ def main():
     local_initialization_trainer = LocalInitializationTrainer(current_image)
     local_initialization_trainer.run(iterations=initialization_iterations)
 
+    # We set a copy of the initialized model to both the local transformation and the
+    # global models.
     next_gaussian_model = local_initialization_trainer.gaussian_model
     local_transformation_trainer = LocalTransformationTrainer(next_gaussian_model)
-    #global_trainer = GlobalTrainer(
-    #    gaussian_model=gaussian_model,
-    #    cameras=[camera],
-    #    iterations=100
-    #)
+    # global_trainer = GlobalTrainer(copy.deepcopy(next_gaussian_model))
 
     current_camera = local_initialization_trainer.camera
-    for iteration in tqdm(range(iteration_step_size, len(dataset), iteration_step_size)):
+    for iteration in tqdm(
+        range(iteration_step_size, len(dataset), iteration_step_size)
+    ):
         # Keep a copy of current gaussians to compare
         with torch.no_grad():
             current_gaussian_model = copy.deepcopy(next_gaussian_model)
@@ -74,12 +75,18 @@ def main():
             loss = photometric_loss(next_camera_image, next_gaussian_image)
             assert loss < 0.01
 
-            torchvision.utils.save_image(next_camera_image, f"artifacts/global/next_camera_{iteration}.png")
-            torchvision.utils.save_image(next_gaussian_image, f"artifacts/global/next_gaussian_{iteration}.png")
-        #global_trainer.add_camera(next_camera)
-        #global_trainer.run()
+            torchvision.utils.save_image(
+                next_camera_image, f"artifacts/global/next_camera_{iteration}.png"
+            )
+            torchvision.utils.save_image(
+                next_gaussian_image, f"artifacts/global/next_gaussian_{iteration}.png"
+            )
+
+        # global_trainer.add_camera(next_camera)
+        # global_trainer.run(global_iterations)
 
         current_camera = next_camera
+
 
 if __name__ == "__main__":
     main()
