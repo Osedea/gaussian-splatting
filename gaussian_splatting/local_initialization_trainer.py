@@ -14,7 +14,7 @@ from gaussian_splatting.render import render
 from gaussian_splatting.trainer import Trainer
 from gaussian_splatting.utils.general import PILtoTorch, safe_state
 from gaussian_splatting.utils.graphics import BasicPointCloud
-from gaussian_splatting.utils.loss import l1_loss, ssim
+from gaussian_splatting.utils.loss import PhotometricLoss
 
 
 class LocalInitializationTrainer(Trainer):
@@ -32,11 +32,9 @@ class LocalInitializationTrainer(Trainer):
         # TODO: set camera extent???
 
         self.optimizer = Optimizer(self.gaussian_model)
+        self._photometric_loss = PhotometricLoss(lambda_dssim=0.2)
 
         self.camera = self._get_orthogonal_camera(image)
-
-        self._iterations = iterations
-        self._lambda_dssim = 0.2
 
         # Densification and pruning
         self._opacity_reset_interval = 10001
@@ -52,11 +50,11 @@ class LocalInitializationTrainer(Trainer):
 
         safe_state(seed=2234)
 
-    def run(self):
-        progress_bar = tqdm(range(self._iterations), desc="Initialization")
+    def run(self, iterations: int = 3000):
+        progress_bar = tqdm(range(iterations), desc="Initialization")
 
         best_loss, best_iteration, losses = None, 0, []
-        for iteration in range(self._iterations):
+        for iteration in range(iterations):
             self.optimizer.update_learning_rate(iteration)
             rendered_image, viewspace_point_tensor, visibility_filter, radii = render(
                 self.camera, self.gaussian_model
@@ -73,19 +71,17 @@ class LocalInitializationTrainer(Trainer):
                 )
 
             gt_image = self.camera.original_image.cuda()
-            Ll1 = l1_loss(rendered_image, gt_image)
-            loss = (1.0 - self._lambda_dssim) * Ll1 + self._lambda_dssim * (
-                1.0 - ssim(rendered_image, gt_image)
-            )
+            loss = self._photometric_loss(rendered_image, gt_image)
+            loss.backward()
+
+            self.optimizer.step()
+            self.optimizer.zero_grad(set_to_none=True)
+
             if best_loss is None or best_loss > loss:
                 best_loss = loss.cpu().item()
                 best_iteration = iteration
             losses.append(loss.cpu().item())
 
-            loss.backward()
-
-            self.optimizer.step()
-            self.optimizer.zero_grad(set_to_none=True)
 
             with torch.no_grad():
                 # Densification

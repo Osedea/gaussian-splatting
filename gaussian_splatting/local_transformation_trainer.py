@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 from gaussian_splatting.render import render
 from gaussian_splatting.trainer import Trainer
-from gaussian_splatting.utils.general import PILtoTorch, safe_state
-from gaussian_splatting.utils.loss import l1_loss, ssim
+from gaussian_splatting.utils.general import safe_state
+from gaussian_splatting.utils.loss import PhotometricLoss
 
 
 class QuaternionRotation(nn.Module):
@@ -81,84 +81,73 @@ class TransformationModel(nn.Module):
 
 
 class LocalTransformationTrainer(Trainer):
-    def __init__(self, image, camera, gaussian_model, iterations: int = 100):
-        self.camera = camera
+    def __init__(self, gaussian_model):
         self.gaussian_model = gaussian_model
 
-        self.xyz = gaussian_model.get_xyz.detach()
-
         self.transformation_model = TransformationModel()
-        self.transformation_model.to(self.xyz.device)
-
-        self.image = PILtoTorch(image).to(self.xyz.device)
+        self.transformation_model.to(gaussian_model.get_xyz.device)
 
         self.optimizer = torch.optim.Adam(
             self.transformation_model.parameters(), lr=0.0001
         )
-
-        self._iterations = iterations
-        self._lambda_dssim = 0.2
+        self._photometric_loss = PhotometricLoss(lambda_dssim=0.2)
 
         safe_state(seed=2234)
 
-    def run(self):
-        progress_bar = tqdm(range(self._iterations), desc="Transformation")
+    def run(self, current_camera, gt_image, iterations: int = 1000):
+        gt_image = gt_image.to(self.gaussian_model.get_xyz.device)
 
-        best_loss, best_iteration, losses = None, 0, []
-        best_xyz = None
-        for iteration in range(self._iterations):
-            xyz = self.transformation_model(self.xyz)
+        progress_bar = tqdm(range(iterations), desc="Transformation")
+
+        losses = []
+        best_loss, best_iteration, best_xyz = None, 0, None
+        patience = 0
+        for iteration in range(iterations):
+            xyz = self.transformation_model(self.gaussian_model.get_xyz.detach())
             self.gaussian_model.set_optimizable_tensors({"xyz": xyz})
 
             rendered_image, viewspace_point_tensor, visibility_filter, radii = render(
-                self.camera, self.gaussian_model
+                current_camera, self.gaussian_model
             )
+
+            loss = self._photometric_loss(rendered_image, gt_image)
+            loss.backward()
+            self.optimizer.step()
+
+            losses.append(loss.cpu().item())
+
+            progress_bar.set_postfix({"Loss": f"{loss:.{5}f}"})
+            progress_bar.update(1)
 
             if iteration % 10 == 0:
-                plt.cla()
-                plt.plot(losses)
-                plt.yscale("log")
-                plt.savefig("artifacts/local/transfo/losses.png")
+                self._save_artifacts(losses, rendered_image, iteration)
 
-                torchvision.utils.save_image(
-                    rendered_image, f"artifacts/local/transfo/rendered_{iteration}.png"
-                )
-
-            gt_image = self.image
-            Ll1 = l1_loss(rendered_image, gt_image)
-            loss = (1.0 - self._lambda_dssim) * Ll1 + self._lambda_dssim * (
-                1.0 - ssim(rendered_image, gt_image)
-            )
             if best_loss is None or best_loss > loss:
                 best_loss = loss.cpu().item()
                 best_iteration = iteration
-                best_xyz = xyz
-            losses.append(loss.cpu().item())
-
-            loss.backward()
-
-            self.optimizer.step()
-
-            progress_bar.set_postfix(
-                {
-                    "Loss": f"{loss:.{5}f}",
-                }
-            )
-            progress_bar.update(1)
+                best_xyz = xyz.detach()
+            elif best_loss < loss and patience > 10:
+                self._save_artifacts(losses, rendered_image, iteration)
+                break
+            else:
+                patience += 1
 
         progress_bar.close()
-        print(
-            f"Training done. Best loss = {best_loss:.{5}f} at iteration {best_iteration}."
-        )
+
+        print(f"Best loss = {best_loss:.{5}f} at iteration {best_iteration}.")
         self.gaussian_model.set_optimizable_tensors({"xyz": best_xyz})
 
-        torchvision.utils.save_image(
-            rendered_image, f"artifacts/local/transfo/rendered_best.png"
-        )
-        torchvision.utils.save_image(gt_image, f"artifacts/local/transfo/gt.png")
-
-    def get_affine_transformation(self):
         rotation = self.transformation_model.rotation.numpy()
         translation = self.transformation_model.translation.numpy()
 
         return rotation, translation
+
+    def _save_artifacts(self, losses, rendered_image, iteration):
+        plt.cla()
+        plt.plot(losses)
+        plt.yscale("log")
+        plt.savefig("artifacts/local/transfo/losses.png")
+
+        torchvision.utils.save_image(
+            rendered_image, f"artifacts/local/transfo/rendered_{iteration}.png"
+        )
