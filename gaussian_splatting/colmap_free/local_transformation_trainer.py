@@ -2,6 +2,7 @@ import torch
 import torchvision
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+from pathlib import Path
 
 from gaussian_splatting.colmap_free.transformation_model import \
     AffineTransformationModel
@@ -23,9 +24,12 @@ class LocalTransformationTrainer(Trainer):
         )
         self._photometric_loss = PhotometricLoss(lambda_dssim=0.2)
 
+        self._output_path = Path(" artifacts/local/transfo/")
+        self._output_path.mkdir(exist_ok=True, parents=True)
+
         safe_state(seed=2234)
 
-    def run(self, current_camera, gt_image, iterations: int = 1000):
+    def run(self, current_camera, gt_image, iterations: int = 1000, run: int = 0):
         gt_image = gt_image.to(self.gaussian_model.get_xyz.device)
 
         progress_bar = tqdm(range(iterations), desc="Transformation")
@@ -50,18 +54,18 @@ class LocalTransformationTrainer(Trainer):
             progress_bar.set_postfix({"Loss": f"{loss:.{5}f}"})
             progress_bar.update(1)
 
-            if iteration % 10 == 0:
-                self._save_artifacts(losses, rendered_image, iteration)
+            if iteration % 10 == 0 or iteration == len(iterations) - 1:
+                self._save_artifacts(losses, rendered_image, iteration, run)
 
             if best_loss is None or best_loss > loss:
                 best_loss = loss.cpu().item()
                 best_iteration = iteration
                 best_xyz = xyz.detach()
-            elif best_loss < loss and patience > 10:
-                self._save_artifacts(losses, rendered_image, iteration)
-                break
-            else:
-                patience += 1
+            #elif best_loss < loss and patience > 10:
+            #    self._save_artifacts(losses, rendered_image, iteration, run)
+            #    break
+            #else:
+            #    patience += 1
 
         progress_bar.close()
 
@@ -73,12 +77,12 @@ class LocalTransformationTrainer(Trainer):
 
         return rotation, translation
 
-    def _save_artifacts(self, losses, rendered_image, iteration):
+    def _save_artifacts(self, losses, rendered_image, iteration, run):
         plt.cla()
         plt.plot(losses)
         plt.yscale("log")
-        plt.savefig("artifacts/local/transfo/losses.png")
+        plt.savefig(self._output_path / "losses.png")
 
         torchvision.utils.save_image(
-            rendered_image, f"artifacts/local/transfo/rendered_{iteration}.png"
+            rendered_image, self._output_path / f"{run}_rendered_{iteration}.png"
         )

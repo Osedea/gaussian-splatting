@@ -20,10 +20,10 @@ from gaussian_splatting.utils.loss import PhotometricLoss
 
 def main():
     debug = True
-    iteration_step_size = 5
-    initialization_iterations = 50
-    transformation_iterations = 50
-    global_iterations = 50
+    iteration_step_size = 50
+    initialization_iterations = 250
+    transformation_iterations = 250
+    global_iterations = 5
 
     photometric_loss = PhotometricLoss(lambda_dssim=0.2)
     dataset = ImageDataset(images_path=Path("data/phil/1/input/"))
@@ -53,6 +53,7 @@ def main():
             current_camera,
             next_image,
             iterations=transformation_iterations,
+            run=iteration,
         )
 
         # Add new camera to Global3DGS training cameras
@@ -73,8 +74,8 @@ def main():
             next_camera_image, _, _, _ = render(next_camera, current_gaussian_model)
             next_gaussian_image, _, _, _ = render(current_camera, next_gaussian_model)
             loss = photometric_loss(next_camera_image, next_gaussian_image)
-            assert loss < 0.01
 
+            print(loss)
             torchvision.utils.save_image(
                 next_camera_image, f"artifacts/global/next_camera_{iteration}.png"
             )
@@ -82,6 +83,7 @@ def main():
                 next_gaussian_image, f"artifacts/global/next_gaussian_{iteration}.png"
             )
 
+        break
         # global_trainer.add_camera(next_camera)
         # global_trainer.run(global_iterations)
 

@@ -6,6 +6,7 @@ import torchvision
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from transformers import pipeline
+from pathlib import Path
 
 from gaussian_splatting.dataset.cameras import Camera
 from gaussian_splatting.model import GaussianModel
@@ -50,6 +51,10 @@ class LocalInitializationTrainer(Trainer):
 
         safe_state(seed=2234)
 
+        self._output_path =Path(" artifacts/local/init/")
+        self._output_path.mkdir(exist_ok=True, parents=True)
+
+
     def run(self, iterations: int = 3000):
         progress_bar = tqdm(range(iterations), desc="Initialization")
 
@@ -59,16 +64,6 @@ class LocalInitializationTrainer(Trainer):
             rendered_image, viewspace_point_tensor, visibility_filter, radii = render(
                 self.camera, self.gaussian_model
             )
-
-            if iteration % 100 == 0:
-                plt.cla()
-                plt.plot(losses)
-                plt.yscale("log")
-                plt.savefig("artifacts/local/init/losses.png")
-
-                torchvision.utils.save_image(
-                    rendered_image, f"artifacts/local/init/rendered_{iteration}.png"
-                )
 
             gt_image = self.camera.original_image.cuda()
             loss = self._photometric_loss(rendered_image, gt_image)
@@ -81,6 +76,9 @@ class LocalInitializationTrainer(Trainer):
                 best_loss = loss.cpu().item()
                 best_iteration = iteration
             losses.append(loss.cpu().item())
+
+            if iteration % 100 == 0:
+                self._save_artifacts(self, losses, rendered_image, iteration)
 
             with torch.no_grad():
                 # Densification
@@ -115,10 +113,7 @@ class LocalInitializationTrainer(Trainer):
             f"Training done. Best loss = {best_loss:.{5}f} at iteration {best_iteration}."
         )
 
-        torchvision.utils.save_image(
-            rendered_image, f"artifacts/local/init/rendered_{iteration}.png"
-        )
-        torchvision.utils.save_image(gt_image, f"artifacts/local/init/gt.png")
+        torchvision.utils.save_image(gt_image, self._output_path / "gt.png")
 
     def _get_orthogonal_camera(self, image):
         camera = Camera(
@@ -180,3 +175,13 @@ class LocalInitializationTrainer(Trainer):
         depth_estimator = pipeline("depth-estimation", model=checkpoint)
 
         return depth_estimator
+
+    def _save_artifacts(self, losses, rendered_image, iteration):
+        plt.cla()
+        plt.plot(losses)
+        plt.yscale("log")
+        plt.savefig(self._output_path / "losses.png")
+
+        torchvision.utils.save_image(
+            rendered_image, self._output_path / f"rendered_{iteration}.png"
+        )
