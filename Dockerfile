@@ -26,7 +26,8 @@ RUN conda init
 RUN conda env create --file environment.yml
 
 # COLMAP dependencies
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+RUN apt update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
     git \ 
     cmake \
     libboost-program-options-dev \

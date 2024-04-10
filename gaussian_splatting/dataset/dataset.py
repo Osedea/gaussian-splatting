@@ -18,7 +18,6 @@ from gaussian_splatting.utils.camera import camera_to_json, load_cameras
 
 
 class Dataset:
-
     def __init__(
         self,
         source_path,

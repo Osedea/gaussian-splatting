@@ -23,7 +23,7 @@ def main(video_filename: Path, output_path: Path, k: int = 10):
             current_frame += 1
             continue
 
-        output_filename = output_path / f"{current_frame}.jpg"
+        output_filename = output_path / f"{str(current_frame).zfill(6)}.jpg"
         cv2.imwrite(output_filename.as_posix(), frame)
         print(f"Writing {output_filename}.")
 

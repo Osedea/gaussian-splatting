@@ -125,7 +125,6 @@ class Optimizer:
             extension_tensor = tensors_dict[group["name"]]
             stored_state = self._optimizer.state.get(group["params"][0], None)
             if stored_state is not None:
-
                 stored_state["exp_avg"] = torch.cat(
                     (stored_state["exp_avg"], torch.zeros_like(extension_tensor)), dim=0
                 )

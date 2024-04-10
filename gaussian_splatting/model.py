@@ -33,7 +33,6 @@ def build_covariance_from_scaling_rotation(scaling, scaling_modifier, rotation):
 
 
 class GaussianModel:
-
     def __init__(self, sh_degree: int = 3):
         self.active_sh_degree = 0
         self.max_sh_degree = sh_degree

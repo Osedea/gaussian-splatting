@@ -38,7 +38,6 @@ def readImages(renders_dir, gt_dir):
 
 
 def evaluate(model_paths):
-
     full_dict = {}
     per_view_dict = {}
     full_dict_polytopeonly = {}

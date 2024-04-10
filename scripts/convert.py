@@ -52,7 +52,8 @@ def main(source_path, resize, use_gpu):
         step=" Feature matching",
         command=f"colmap sequential_matcher \
         --database_path {source_path / 'distorted' / 'database.db'} \
-        --SiftMatching.use_gpu {use_gpu}",
+        --SiftMatching.use_gpu {use_gpu} \
+        --SiftMatching.max_num_matches 10000",
     )
 
     _run_command(

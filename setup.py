@@ -6,6 +6,9 @@ setup(
     packages=find_packages(),  # Automatically discover and include all packages
     scripts=[],
     install_requires=[
-        "pyyaml"
+        "pyyaml",
+        "black",
+        "isort",
+        "importchecker"
     ]
 )
