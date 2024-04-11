@@ -1,4 +1,3 @@
-import math
 from pathlib import Path
 
 import numpy as np
@@ -8,22 +7,20 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 from transformers import pipeline
 
-from gaussian_splatting.dataset.cameras import Camera
 from gaussian_splatting.model import GaussianModel
 from gaussian_splatting.optimizer import Optimizer
 from gaussian_splatting.render import render
 from gaussian_splatting.trainer import Trainer
-from gaussian_splatting.utils.general import PILtoTorch, safe_state
+from gaussian_splatting.utils.general import TorchToPIL, safe_state
 from gaussian_splatting.utils.graphics import BasicPointCloud
 from gaussian_splatting.utils.loss import PhotometricLoss
 
 
 class LocalInitializationTrainer(Trainer):
-    def __init__(self, image, sh_degree: int = 3, iterations: int = 10000):
+    def __init__(self, image, camera, sh_degree: int = 3, iterations: int = 10000):
         DPT = self._load_DPT()
-        depth_estimation = DPT(image)["predicted_depth"]
+        depth_estimation = DPT(TorchToPIL(image))["predicted_depth"]
 
-        image = PILtoTorch(image)
         initial_point_cloud = self._get_initial_point_cloud(
             image, depth_estimation, step=25
         )
@@ -35,7 +32,7 @@ class LocalInitializationTrainer(Trainer):
         self.optimizer = Optimizer(self.gaussian_model)
         self._photometric_loss = PhotometricLoss(lambda_dssim=0.2)
 
-        self.camera = self._get_orthogonal_camera(image)
+        self.camera = camera
 
         # Densification and pruning
         self._opacity_reset_interval = 10001
@@ -113,21 +110,6 @@ class LocalInitializationTrainer(Trainer):
         )
 
         torchvision.utils.save_image(gt_image, self._output_path / "gt.png")
-
-    def _get_orthogonal_camera(self, image):
-        camera = Camera(
-            R=np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
-            T=np.array([-0.5, -0.5, 1.0]),
-            FoVx=2 * math.atan(0.5),
-            FoVy=2 * math.atan(0.5),
-            image=image,
-            gt_alpha_mask=None,
-            image_name="patate",
-            colmap_id=0,
-            uid=0,
-        )
-
-        return camera
 
     def _get_initial_point_cloud(self, frame, depth_estimation, step: int = 50):
         # Frame and depth_estimation width do not exactly match.

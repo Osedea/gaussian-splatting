@@ -13,6 +13,7 @@ import random
 
 import numpy as np
 import torch
+from torchvision.transforms.functional import to_pil_image
 
 
 def inverse_sigmoid(x):
@@ -29,6 +30,12 @@ def PILtoTorch(pil_image, resolution=None):
         image = image.unsqueeze(dim=-1)
 
     image = image.permute(2, 0, 1)
+
+    return image
+
+
+def TorchToPIL(torch_image):
+    image = to_pil_image(torch_image)
 
     return image
 

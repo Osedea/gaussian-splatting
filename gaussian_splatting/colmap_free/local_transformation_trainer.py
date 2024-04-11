@@ -21,7 +21,7 @@ class LocalTransformationTrainer(Trainer):
         self.transformation_model.to(gaussian_model.get_xyz.device)
 
         self.optimizer = torch.optim.Adam(
-            self.transformation_model.parameters(), lr=0.0001
+            self.transformation_model.parameters(), lr=0.0005
         )
         self._photometric_loss = PhotometricLoss(lambda_dssim=0.2)
 
@@ -57,14 +57,14 @@ class LocalTransformationTrainer(Trainer):
             progress_bar.set_postfix({"Loss": f"{loss:.{5}f}"})
             progress_bar.update(1)
 
-            if iteration % 10 == 0 or iteration == iterations - 1:
+            if iteration % 50 == 0 or iteration == iterations - 1:
                 self._save_artifacts(losses, rendered_image, iteration, run)
 
             if best_loss is None or best_loss > loss:
                 best_loss = loss.cpu().item()
                 best_iteration = iteration
-                best_xyz = xyz.detach()
 
+                best_xyz = xyz.detach()
                 best_rotation = self.transformation_model.rotation.numpy()
                 best_translation = self.transformation_model.translation.numpy()
 
@@ -76,14 +76,10 @@ class LocalTransformationTrainer(Trainer):
 
         progress_bar.close()
 
-        torchvision.utils.save_image(gt_image, self._output_path / "gt.png")
+        torchvision.utils.save_image(gt_image, self._output_path / f"{run}_gt.png")
 
         print(f"Best loss = {best_loss:.{5}f} at iteration {best_iteration}.")
         self.gaussian_model.set_optimizable_tensors({"xyz": best_xyz})
-
-        if best_rotation is None or best_translation is None:
-            best_rotation = self.transformation_model.rotation.numpy()
-            best_translation = self.transformation_model.translation.numpy()
 
         return best_rotation, best_translation
 

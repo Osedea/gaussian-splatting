@@ -2,6 +2,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from gaussian_splatting.utils.general import PILtoTorch
+
 
 class ImageDataset:
     def __init__(self, images_path: Path):
@@ -11,6 +13,8 @@ class ImageDataset:
     def get_frame(self, i: int):
         image_path = self._images_paths[i]
         image = Image.open(image_path)
+
+        image = PILtoTorch(image)
 
         return image
 
