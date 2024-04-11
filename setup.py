@@ -9,6 +9,8 @@ setup(
         "pyyaml",
         "black",
         "isort",
-        "importchecker"
+        "importchecker",
+        "matplotlib",
+        "transformers"
     ]
 )

@@ -6,7 +6,7 @@ import torch
 import torchvision
 from tqdm import tqdm
 
-from gaussian_splatting.colmap_free.global_trainer import GlobalTrainer
+# from gaussian_splatting.colmap_free.global_trainer import GlobalTrainer
 from gaussian_splatting.colmap_free.local_initialization_trainer import \
     LocalInitializationTrainer
 from gaussian_splatting.colmap_free.local_transformation_trainer import \
@@ -22,7 +22,7 @@ def main():
     debug = True
     iteration_step_size = 50
     initialization_iterations = 250
-    transformation_iterations = 250
+    transformation_iterations = 1000
     global_iterations = 5
 
     photometric_loss = PhotometricLoss(lambda_dssim=0.2)
@@ -71,16 +71,24 @@ def main():
 
         if debug:
             # Save artifact
+            current_camera_image, _, _, _ = render(
+                current_camera, current_gaussian_model
+            )
             next_camera_image, _, _, _ = render(next_camera, current_gaussian_model)
             next_gaussian_image, _, _, _ = render(current_camera, next_gaussian_model)
             loss = photometric_loss(next_camera_image, next_gaussian_image)
 
             print(loss)
+            output_path = Path("artifacts/global")
+            output_path.mkdir(exist_ok=True, parents=True)
             torchvision.utils.save_image(
-                next_camera_image, f"artifacts/global/next_camera_{iteration}.png"
+                current_camera_image, output_path / f"current_camera_{iteration}.png"
             )
             torchvision.utils.save_image(
-                next_gaussian_image, f"artifacts/global/next_gaussian_{iteration}.png"
+                next_camera_image, output_path / f"next_camera_{iteration}.png"
+            )
+            torchvision.utils.save_image(
+                next_gaussian_image, output_path / f"next_gaussian_{iteration}.png"
             )
 
         break

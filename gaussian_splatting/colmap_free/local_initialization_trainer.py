@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -6,7 +7,6 @@ import torchvision
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from transformers import pipeline
-from pathlib import Path
 
 from gaussian_splatting.dataset.cameras import Camera
 from gaussian_splatting.model import GaussianModel
@@ -51,9 +51,8 @@ class LocalInitializationTrainer(Trainer):
 
         safe_state(seed=2234)
 
-        self._output_path =Path(" artifacts/local/init/")
+        self._output_path = Path("artifacts/local/init/")
         self._output_path.mkdir(exist_ok=True, parents=True)
-
 
     def run(self, iterations: int = 3000):
         progress_bar = tqdm(range(iterations), desc="Initialization")
@@ -78,7 +77,7 @@ class LocalInitializationTrainer(Trainer):
             losses.append(loss.cpu().item())
 
             if iteration % 100 == 0:
-                self._save_artifacts(self, losses, rendered_image, iteration)
+                self._save_artifacts(losses, rendered_image, iteration)
 
             with torch.no_grad():
                 # Densification

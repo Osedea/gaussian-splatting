@@ -1,8 +1,6 @@
 import os
-import uuid
 from random import randint
 
-import torch
 from tqdm import tqdm
 
 from gaussian_splatting.optimizer import Optimizer
