@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import torchvision
 
-# from gaussian_splatting.colmap_free.global_trainer import GlobalTrainer
+from gaussian_splatting.colmap_free.global_trainer import GlobalTrainer
 from gaussian_splatting.colmap_free.local_initialization_trainer import \
     LocalInitializationTrainer
 from gaussian_splatting.colmap_free.local_transformation_trainer import \
@@ -18,41 +18,43 @@ from gaussian_splatting.utils.loss import PhotometricLoss
 
 def main():
     debug = True
-    iteration_step_size = 50
-    global_iterations = 5
+    step_size = 10
+    initialization_iterations = 1000
+    transformation_iterations = 250
+    global_iterations = 50
 
     photometric_loss = PhotometricLoss(lambda_dssim=0.2)
     dataset = ImageDataset(images_path=Path("data/phil/1/input/"))
 
     global_trainer = None
-    for iteration in range(0, len(dataset), iteration_step_size):
-        print(f">>> Current: {iteration} / Next: {iteration + iteration_step_size}")
+    for i in range(len(dataset) // step_size):
+        print(f">>> Current: {i * step_size} / Next: {(i + 1) * step_size}")
 
-        current_image = dataset.get_frame(iteration)
-        next_image = dataset.get_frame(iteration + iteration_step_size)
+        current_image = dataset.get_frame(i * step_size)
+        next_image = dataset.get_frame((i + 1) * step_size)
 
-        if iteration == 0:
+        if i == 0:
             current_camera = _get_orthogonal_camera(current_image)
         else:
             current_camera = next_camera
 
         current_camera, current_gaussian_model = _initialize_local_gaussian_model(
-            current_image, current_camera, run=iteration
+            current_image, current_camera, iterations=initialization_iterations, run=i
         )
 
-        # if iteration == 0:
-        # global_gaussian_model = copy.deepcopy(current_gaussian_model)
-        # global_trainer = GlobalTrainer(global_gaussian_model)
+        if i == 0:
+            global_gaussian_model = copy.deepcopy(current_gaussian_model)
+            global_trainer = GlobalTrainer(global_gaussian_model)
 
         if debug:
             current_gaussian_model_copy = copy.deepcopy(current_gaussian_model)
 
         next_camera, next_gaussian_model = _transform_local_gaussian_model(
-            next_image, current_camera, current_gaussian_model, run=iteration
+            next_image, current_camera, current_gaussian_model,
+            iterations=transformation_iterations, run=i
         )
 
-        # global_trainer.add_camera(next_camera)
-        # global_trainer.run(global_iterations)
+        global_trainer.add_camera(next_camera)
 
         if debug:
             save_artifacts(
@@ -62,11 +64,12 @@ def main():
                 next_camera,
                 next_gaussian_model,
                 next_image,
-                iteration,
+                i,
             )
-            if iteration >= 50:
-                break
 
+        global_trainer.run((i + 1) * global_iterations)
+
+    #global_trainer.run(global_iterations)
 
 def _initialize_local_gaussian_model(
     image, camera, iterations: int = 250, run: int = 0

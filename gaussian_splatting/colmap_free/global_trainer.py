@@ -11,8 +11,8 @@ from gaussian_splatting.utils.loss import PhotometricLoss
 
 
 class GlobalTrainer(Trainer):
-    def __init__(self, gaussian_model):
-        self._model_path = self._prepare_model_path()
+    def __init__(self, gaussian_model, output_path = None):
+        self._model_path = self._prepare_model_path(output_path)
 
         self.gaussian_model = gaussian_model
         self.cameras = []
@@ -81,4 +81,5 @@ class GlobalTrainer(Trainer):
             viewspace_point_tensor, visibility_filter, radii
         )
         self._densify_and_prune(True)
-        self._reset_opacity()
+        #self._reset_opacity()
+

@@ -21,7 +21,7 @@ class LocalTransformationTrainer(Trainer):
         self.transformation_model.to(gaussian_model.get_xyz.device)
 
         self.optimizer = torch.optim.Adam(
-            self.transformation_model.parameters(), lr=0.0005
+            self.transformation_model.parameters(), lr=0.0001
         )
         self._photometric_loss = PhotometricLoss(lambda_dssim=0.2)
 
@@ -57,8 +57,8 @@ class LocalTransformationTrainer(Trainer):
             progress_bar.set_postfix({"Loss": f"{loss:.{5}f}"})
             progress_bar.update(1)
 
-            if iteration % 50 == 0 or iteration == iterations - 1:
-                self._save_artifacts(losses, rendered_image, iteration, run)
+            #if iteration % 50 == 0 or iteration == iterations - 1:
+            #    self._save_artifacts(losses, rendered_image, iteration, run)
 
             if best_loss is None or best_loss > loss:
                 best_loss = loss.cpu().item()
