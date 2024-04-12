@@ -9,6 +9,8 @@
 # For inquiries contact  george.drettakis@inria.fr
 #
 
+import math
+
 import numpy as np
 
 from gaussian_splatting.dataset.cameras import Camera
@@ -63,6 +65,44 @@ def load_camera(resolution, cam_id, cam_info, resolution_scale):
         image_name=cam_info.image_name,
         uid=cam_id,
     )
+
+
+def get_orthogonal_camera(image):
+    camera = Camera(
+        R=np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+        T=np.array([-0.5, -0.5, 1.0]),
+        FoVx=2 * math.atan(0.5),
+        FoVy=2 * math.atan(0.5),
+        image=image,
+        gt_alpha_mask=None,
+        image_name="patate",
+        colmap_id=0,
+        uid=0,
+    )
+
+    return camera
+
+
+def transform_camera(
+    camera,
+    rotation,
+    translation,
+    image,
+    image_name: str = "",
+    _id: int = 0,
+):
+    transformed_camera = Camera(
+        R=np.matmul(camera.R, rotation),
+        T=(camera.T + translation),
+        FoVx=camera.FoVx,
+        FoVy=camera.FoVy,
+        image=image,
+        gt_alpha_mask=None,
+        image_name=image_name,
+        colmap_id=_id,
+        uid=_id,
+    )
+    return transformed_camera
 
 
 def load_cameras(cameras_infos, resolution_scale, resolution):

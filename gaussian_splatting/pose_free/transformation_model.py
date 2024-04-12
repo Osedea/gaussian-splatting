@@ -60,13 +60,8 @@ class AffineTransformationModel(nn.Module):
         return transformed_xyz
 
     @property
-    def rotation(self):
-        rotation = self._rotation.get_rotation_matrix().detach().cpu()
+    def transformation(self):
+        rotation = self._rotation.get_rotation_matrix().detach().cpu().numpy()
+        translation = self._translation.translation.detach().cpu().numpy()
 
-        return rotation
-
-    @property
-    def translation(self):
-        translation = self._translation.translation.detach().cpu()
-
-        return translation
+        return rotation, translation
