@@ -1,7 +1,4 @@
-import os
-from random import randint
-
-from tqdm import tqdm
+from pathlib import Path
 
 from gaussian_splatting.optimizer import Optimizer
 from gaussian_splatting.render import render
@@ -11,14 +8,15 @@ from gaussian_splatting.utils.loss import PhotometricLoss
 
 
 class GlobalTrainer(Trainer):
-    def __init__(self, gaussian_model, output_path=None):
+    def __init__(self, gaussian_model, iterations: int = 100, output_path=None):
         self._model_path = self._prepare_model_path(output_path)
 
         self.gaussian_model = gaussian_model
-        self.cameras = []
 
         self.optimizer = Optimizer(self.gaussian_model)
         self._photometric_loss = PhotometricLoss(lambda_dssim=0.2)
+
+        self._iterations = iterations
 
         self._debug = False
 
@@ -30,25 +28,16 @@ class GlobalTrainer(Trainer):
 
         safe_state()
 
-    def add_camera(self, camera):
-        self.cameras.append(camera)
-
-    def run(self, iterations: int = 1000):
-        ema_loss_for_log = 0.0
-        cameras = None
-        first_iter = 1
-        progress_bar = tqdm(range(first_iter, iterations), desc="Training progress")
-        for iteration in range(first_iter, iterations + 1):
+    def run(self, current_camera, next_camera, progress_bar=None, run_id: int = 0):
+        cameras = (current_camera, next_camera)
+        for iteration in range(self._iterations):
             self.optimizer.update_learning_rate(iteration)
 
             # Every 1000 its we increase the levels of SH up to a maximum degree
             if iteration % 1000 == 0:
                 self.gaussian_model.oneupSHdegree()
 
-            # Pick a random camera
-            if not cameras:
-                cameras = self.cameras.copy()
-            camera = cameras.pop(randint(0, len(cameras) - 1))
+            camera = cameras[iteration % 2]
 
             # Render image
             rendered_image, viewspace_point_tensor, visibility_filter, radii = render(
@@ -59,22 +48,24 @@ class GlobalTrainer(Trainer):
             gt_image = camera.original_image.cuda()
             loss = self._photometric_loss(rendered_image, gt_image)
             loss.backward()
+            loss_value = loss.cpu().item()
 
             # Optimizer step
             self.optimizer.step()
             self.optimizer.zero_grad(set_to_none=True)
 
-            # Progress bar
-            ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
-            progress_bar.set_postfix({"Loss": f"{ema_loss_for_log:.{7}f}"})
-            progress_bar.update(1)
+            if progress_bar is not None:
+                progress_bar.set_postfix(
+                    {
+                        "stage": "global",
+                        "iteration": f"{iteration}/{self._iterations}",
+                        "loss": f"{loss_value:.5f}",
+                    }
+                )
 
-        progress_bar.close()
-
-        point_cloud_path = os.path.join(
-            self._model_path, "point_cloud/iteration_{}".format(iteration)
+        self.gaussian_model.save_ply(
+            Path(self._model_path) / "point_cloud" / str(run_id) / "point_cloud.ply"
         )
-        self.gaussian_model.save_ply(os.path.join(point_cloud_path, "point_cloud.ply"))
 
         # Densification
         self.gaussian_model.update_stats(

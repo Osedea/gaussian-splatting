@@ -21,10 +21,11 @@ class LocalTrainer:
     def __init__(
         self,
         sh_degree: int = 3,
-        init_iterations: int = 250,
-        transfo_iterations: int = 250,
+        init_iterations: int = 1000,
+        transfo_iterations: int = 1000,
+        debug: bool = False,
     ):
-        self._depth_estimator = self._load_depth_estimator()
+        self._depth_estimator = pipeline("depth-estimation", model="vinvino02/glpn-nyu")
         self._point_cloud_step = 25
         self._sh_degree = sh_degree
 
@@ -32,26 +33,28 @@ class LocalTrainer:
 
         self._init_iterations = init_iterations
         self._init_early_stopper = EarlyStopper(patience=10)
-        self._init_save_artifacts_iterations = 50
+        self._init_save_artifacts_iterations = 100
 
-        self._transfo_lr = 0.0001
+        self._transfo_lr = 0.00001
         self._transfo_iterations = transfo_iterations
-        self._transfo_early_stopper = EarlyStopper(patience=10)
-        self._transfo_save_artifacts_iterations = 100
+        self._transfo_early_stopper = EarlyStopper(
+            patience=100,
+        )
+        self._transfo_save_artifacts_iterations = 10
 
-        self._debug = True
+        self._debug = debug
 
         self._output_path = Path("artifacts/local/")
-        self._output_path.mkdir(exist_ok=True, parents=True)
 
         safe_state(seed=2234)
 
-    def run_init(self, image, camera, run_id: int = 0):
-        output_path = self._output_path / "init"
+    def run_init(self, image, camera, progress_bar=None, run_id: int = 0):
+        output_path = self._output_path / "init" / str(run_id)
         output_path.mkdir(exist_ok=True, parents=True)
 
-        gaussian_model = self._get_initial_gaussian_model(image)
+        gaussian_model = self.get_initial_gaussian_model(image, output_path)
         optimizer = Optimizer(gaussian_model)
+        self._init_early_stopper.reset()
 
         image = image.cuda()
         losses = []
@@ -69,31 +72,37 @@ class LocalTrainer:
             optimizer.zero_grad(set_to_none=True)
 
             if self._init_early_stopper.step(loss_value):
-                self._init_early_stopper.print_early_stop()
                 break
 
-            if (
-                self._debug
-                or iteration % self._init_save_artifacts_iterations == 0
-                or iteration == self._init_iterations - 1
-            ):
-                self._save_artifacts(
-                    losses, rendered_image, output_path / str(run_id), iteration
+            if self._debug and (iteration % self._init_save_artifacts_iterations == 0):
+                self._save_artifacts(losses, rendered_image, output_path, iteration)
+
+            if progress_bar is not None:
+                progress_bar.set_postfix(
+                    {
+                        "stage": "init",
+                        "iteration": f"{iteration}/{self._init_iterations}",
+                        "loss": f"{loss_value:.5f}",
+                    }
                 )
 
         if self._debug:
-            save_image(image, output_path / f"{run_id}_ground_truth.png")
+            self._save_artifacts(losses, rendered_image, output_path, "best")
+            save_image(image, output_path / "ground_truth.png")
 
         return gaussian_model
 
-    def run_transfo(self, image, camera, gaussian_model, run_id: int = 0):
-        output_path = self._output_path / "transfo"
+    def run_transfo(
+        self, image, camera, gaussian_model, progress_bar=None, run_id: int = 0
+    ):
+        output_path = self._output_path / "transfo" / str(run_id)
         output_path.mkdir(exist_ok=True, parents=True)
 
         transformation_model = AffineTransformationModel()
         optimizer = torch.optim.Adam(
             transformation_model.parameters(), lr=self._transfo_lr
         )
+        self._transfo_early_stopper.reset()
 
         image = image.cuda()
         transformation_model = transformation_model.cuda()
@@ -114,36 +123,48 @@ class LocalTrainer:
             optimizer.step()
 
             if self._transfo_early_stopper.step(loss_value):
-                self._transfo_early_stopper.print_early_stop()
-                transformation = self._transfo_early_stopper.get_best_params(
-                    transformation
-                )
+                transformation = self._transfo_early_stopper.get_best_params()
                 break
             else:
                 transformation = transformation_model.transformation
-                self._init_early_stopper.set_best_params(transformation)
+                self._transfo_early_stopper.set_best_params(transformation)
 
-            if (
-                self._debug
-                or iteration % self._transfo_save_artifacts_iterations == 0
-                or iteration == self._transfo_iterations - 1
+            if self._debug and (
+                iteration % self._transfo_save_artifacts_iterations == 0
             ):
                 self._save_artifacts(
                     losses,
                     rendered_image,
-                    output_path / str(run_id),
+                    output_path,
                     iteration,
                 )
 
+            if progress_bar is not None:
+                progress_bar.set_postfix(
+                    {
+                        "stage": "transfo",
+                        "iteration": f"{iteration}/{self._transfo_iterations}",
+                        "loss": f"{loss_value:.5f}",
+                    }
+                )
+
         if self._debug:
-            save_image(image, output_path / f"{run_id}_ground_truth.png")
+            self._save_artifacts(losses, rendered_image, output_path, "best")
+            save_image(image, output_path / f"ground_truth.png")
 
         return transformation
 
-    def _get_initial_gaussian_model(self, image):
+    def get_initial_gaussian_model(self, image, output_folder: Path = None):
         PIL_image = TorchToPIL(image)
-
         depth_estimation = self._depth_estimator(PIL_image)["predicted_depth"]
+
+        if self._debug and output_folder is not None:
+            _min, _max = depth_estimation.min().item(), depth_estimation.max().item()
+            save_image(
+                (depth_estimation - _min) / (_max - _min),
+                output_folder / f"depth_estimation_{_min:.3f}_{_max:.3f}.png",
+            )
+
         point_cloud = self._get_initial_point_cloud_from_depth_estimation(
             image, depth_estimation, step=self._point_cloud_step
         )
@@ -195,17 +216,10 @@ class LocalTrainer:
 
         return point_cloud
 
-    def _load_depth_estimator(self):
-        checkpoint = "vinvino02/glpn-nyu"
-        depth_estimator = pipeline("depth-estimation", model=checkpoint)
-
-        return depth_estimator
-
     def _save_artifacts(self, losses, rendered_image, output_path, iteration):
-        output_path.mkdir(exist_ok=True, parents=True)
         plt.cla()
         plt.plot(losses)
         plt.yscale("log")
         plt.savefig(output_path / "losses.png")
 
-        save_image(rendered_image, self._output_path / f"rendered_{iteration}.png")
+        save_image(rendered_image, output_path / f"rendered_{iteration}.png")
