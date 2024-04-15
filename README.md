@@ -83,9 +83,16 @@ in the expected format.
 python scripts/extract_video_frames.py -v <path to .mp4 file> -k <frame_step_size>
 ```
 
-A series of images along with camera positions are required to train gaussian 
-models. Camera positions can be extracted with the Structure From Motion
-algorithm, using COLMAP software. 
+#### 1.1. Pose Estimation
+
+The process of training Gaussian splats models requires a dataset of image and 
+camera pose pairs. We provide two options for camera pose estimation:
+
+##### Option 1 - Prior Pose Estimation 
+
+1. The first option consists in estimating poses with the Structure from Motion 
+algorithm (COLMAP software). This option is recommended for high resolution images 
+of fairly complex scenes with good keypoints. 
 
 ```shell
 python scripts/convert.py -s <path to images location>
@@ -106,10 +113,22 @@ evaluation.
         |---points3D.bin
 ```
 
+##### Option 2 - Pose Free Training
+
+2. The second option consists in learning new camera poses during training. This 
+option requires sequential images, when the transformation between frame T and 
+frame T + 1 can be learned as an affine transformation. This option is recommended
+when Option 1 fails to extract enough camera poses for reconstruction - this 
+typically occurs when image resolution is low, or when the images are textureless. 
+
 ### 2. Train Gaussians
 
+By default, the training script expects the dataset to point to a folder with 
+images and camera pose estimations. To run the pose free algorithm and learn 
+camera poses during training, pass the `--pose-free` flag to training script.
+
 ```shell
-python scripts/train.py -s <path to COLMAP dataset>
+python scripts/train.py -s <path to dataset>
 ```
 
 ### 3. Evaluation
