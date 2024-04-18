@@ -4,15 +4,15 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from torchvision.utils import save_image
-from transformers import pipeline
 
 from gaussian_splatting.model import GaussianModel
 from gaussian_splatting.optimizer import Optimizer
+from gaussian_splatting.pose_free.depth_estimator import DepthEstimator
 from gaussian_splatting.pose_free.transformation_model import \
     AffineTransformationModel
 from gaussian_splatting.render import render
 from gaussian_splatting.utils.early_stopper import EarlyStopper
-from gaussian_splatting.utils.general import TorchToPIL, safe_state
+from gaussian_splatting.utils.general import safe_state
 from gaussian_splatting.utils.graphics import BasicPointCloud
 from gaussian_splatting.utils.loss import PhotometricLoss
 
@@ -25,7 +25,7 @@ class LocalTrainer:
         transfo_iterations: int = 1000,
         debug: bool = False,
     ):
-        self._depth_estimator = pipeline("depth-estimation", model="vinvino02/glpn-nyu")
+        self._depth_estimator = DepthEstimator()
         self._point_cloud_step = 25
         self._sh_degree = sh_degree
 
@@ -155,14 +155,11 @@ class LocalTrainer:
         return transformation
 
     def get_initial_gaussian_model(self, image, output_folder: Path = None):
-        PIL_image = TorchToPIL(image)
-        depth_estimation = self._depth_estimator(PIL_image)["predicted_depth"]
-
+        depth_estimation = self._depth_estimator.run(image)
         if self._debug and output_folder is not None:
-            _min, _max = depth_estimation.min().item(), depth_estimation.max().item()
             save_image(
-                (depth_estimation - _min) / (_max - _min),
-                output_folder / f"depth_estimation_{_min:.3f}_{_max:.3f}.png",
+                depth_estimation,
+                output_folder / f"depth_estimation.png",
             )
 
         point_cloud = self._get_initial_point_cloud_from_depth_estimation(
@@ -177,21 +174,14 @@ class LocalTrainer:
     def _get_initial_point_cloud_from_depth_estimation(
         self, frame, depth_estimation, step: int = 50
     ):
-        # Frame and depth_estimation width do not exactly match.
-        _, w, h = depth_estimation.shape
-
-        _min_depth = depth_estimation.min()
-        _max_depth = depth_estimation.max()
-
+        w, h = depth_estimation.shape
         half_step = step // 2
         points, colors, normals = [], [], []
         for x in range(step, w - step, step):
             for y in range(step, h - step, step):
-                _depth = depth_estimation[0, x, y].item()
+                _depth = depth_estimation[x, y].item()
                 # Normalized points
-                points.append(
-                    [y / h, x / w, (_depth - _min_depth) / (_max_depth - _min_depth)]
-                )
+                points.append([y / h, x / w, _depth])
                 # Average RGB color in the window color around selected pixel
                 colors.append(
                     frame[
