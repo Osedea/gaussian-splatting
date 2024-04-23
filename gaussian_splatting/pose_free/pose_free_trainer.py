@@ -1,4 +1,5 @@
 from pathlib import Path
+import copy
 
 from torchvision.utils import save_image
 from tqdm import tqdm
@@ -16,7 +17,7 @@ class PoseFreeTrainer:
         self._debug = True
 
         self._dataset = ImageDataset(
-            images_path=source_path, step_size=5, downscale_factor=1
+            images_path=source_path, step_size=10, downscale_factor=1
         )
 
         self._local_trainer = LocalTrainer(
@@ -31,7 +32,7 @@ class PoseFreeTrainer:
         initial_gaussian_model = self._local_trainer.get_initial_gaussian_model(
             current_image, self._output_path
         )
-        global_trainer = GlobalTrainer(initial_gaussian_model, iterations=1000)
+        global_trainer = GlobalTrainer(initial_gaussian_model)
 
         current_camera = get_orthogonal_camera(current_image)
 
@@ -42,6 +43,9 @@ class PoseFreeTrainer:
             gaussian_model = self._local_trainer.run_init(
                 current_image, current_camera, progress_bar, run_id=i
             )
+            if self._debug:
+                current_gaussian_model = copy.deepcopy(gaussian_model)
+
             rotation, translation = self._local_trainer.run_transfo(
                 next_image,
                 current_camera,
@@ -52,12 +56,22 @@ class PoseFreeTrainer:
             next_camera = transform_camera(
                 current_camera, rotation, translation, next_image, _id=i
             )
-            global_trainer.run(current_camera, next_camera, progress_bar, run_id=i)
+            global_trainer.run(
+                current_camera,
+                next_camera,
+                iterations=(1000 if i == 0 else 100),
+                progress_bar=progress_bar,
+                run_id=i
+            )
 
             if self._debug:
-                rendered_image, _, _, _ = render(next_camera, gaussian_model)
+                rendered_image, _, _, _ = render(next_camera, current_gaussian_model)
                 save_image(
-                    rendered_image, self._output_path / f"{i}_rendered_image.png"
+                    rendered_image, self._output_path / f"{i}_camera_rendered_image.png"
+                )
+                rendered_image, _, _, _ = render(current_camera, gaussian_model)
+                save_image(
+                    rendered_image, self._output_path / f"{i}_gaussian_rendered_image.png"
                 )
                 save_image(next_image, self._output_path / f"{i}_image.png")
 

@@ -8,7 +8,7 @@ from gaussian_splatting.utils.loss import PhotometricLoss
 
 
 class GlobalTrainer(Trainer):
-    def __init__(self, gaussian_model, iterations: int = 100, output_path=None):
+    def __init__(self, gaussian_model, output_path=None):
         self._model_path = self._prepare_model_path(output_path)
 
         self.gaussian_model = gaussian_model
@@ -16,9 +16,7 @@ class GlobalTrainer(Trainer):
         self.optimizer = Optimizer(self.gaussian_model)
         self._photometric_loss = PhotometricLoss(lambda_dssim=0.2)
 
-        self._iterations = iterations
-
-        self._debug = False
+        self._debug = True
 
         # Densification and pruning
         self._min_opacity = 0.005
@@ -28,9 +26,9 @@ class GlobalTrainer(Trainer):
 
         safe_state()
 
-    def run(self, current_camera, next_camera, progress_bar=None, run_id: int = 0):
+    def run(self, current_camera, next_camera, iterations: int = 100, progress_bar=None, run_id: int = 0):
         cameras = (current_camera, next_camera)
-        for iteration in range(self._iterations):
+        for iteration in range(iterations):
             self.optimizer.update_learning_rate(iteration)
 
             # Every 1000 its we increase the levels of SH up to a maximum degree
@@ -58,7 +56,7 @@ class GlobalTrainer(Trainer):
                 progress_bar.set_postfix(
                     {
                         "stage": "global",
-                        "iteration": f"{iteration}/{self._iterations}",
+                        "iteration": f"{iteration}/{iterations}",
                         "loss": f"{loss_value:.5f}",
                     }
                 )
@@ -68,8 +66,9 @@ class GlobalTrainer(Trainer):
         )
 
         # Densification
-        self.gaussian_model.update_stats(
-            viewspace_point_tensor, visibility_filter, radii
-        )
-        self._densify_and_prune(True)
+        #self.gaussian_model.update_stats(
+        #    viewspace_point_tensor, visibility_filter, radii
+        #)
+        #self._split_points()
+        # self._densify_and_prune(True)
         # self._reset_opacity()

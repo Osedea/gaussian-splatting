@@ -26,21 +26,22 @@ class LocalTrainer:
         debug: bool = False,
     ):
         self._depth_estimator = DepthEstimator()
-        self._point_cloud_step = 25
+        self._point_cloud_step = 2
         self._sh_degree = sh_degree
 
-        self._photometric_loss = PhotometricLoss(lambda_dssim=0.2)
+        self._init_loss = PhotometricLoss(lambda_dssim=0.2)
+        self._transfo_loss = PhotometricLoss(lambda_dssim=0.2)
 
         self._init_iterations = init_iterations
-        self._init_early_stopper = EarlyStopper(patience=10)
+        self._init_early_stopper = EarlyStopper(patience=50)
         self._init_save_artifacts_iterations = 100
 
-        self._transfo_lr = 0.00001
+        self._transfo_lr = 1.e-5
         self._transfo_iterations = transfo_iterations
         self._transfo_early_stopper = EarlyStopper(
-            patience=100,
+            patience=25,
         )
-        self._transfo_save_artifacts_iterations = 10
+        self._transfo_save_artifacts_iterations = 25
 
         self._debug = debug
 
@@ -63,7 +64,7 @@ class LocalTrainer:
 
             rendered_image, _, _, _ = render(camera, gaussian_model)
 
-            loss = self._photometric_loss(rendered_image, image)
+            loss = self._init_loss(rendered_image, image)
             loss.backward()
             loss_value = loss.cpu().item()
             losses.append(loss_value)
@@ -115,7 +116,7 @@ class LocalTrainer:
 
             rendered_image, _, _, _ = render(camera, gaussian_model)
 
-            loss = self._photometric_loss(rendered_image, image)
+            loss = self._transfo_loss(rendered_image, image)
             loss.backward()
             loss_value = loss.cpu().item()
             losses.append(loss_value)
@@ -123,11 +124,16 @@ class LocalTrainer:
             optimizer.step()
 
             if self._transfo_early_stopper.step(loss_value):
-                transformation = self._transfo_early_stopper.get_best_params()
+                best_params = self._transfo_early_stopper.get_best_params()
+                gaussian_model.set_optimizable_tensors({"xyz": best_params["xyz"]})
+                transformation = best_params["transformation"]
                 break
             else:
                 transformation = transformation_model.transformation
-                self._transfo_early_stopper.set_best_params(transformation)
+                self._transfo_early_stopper.set_best_params({
+                    "transformation": transformation,
+                    "xyz": xyz
+                })
 
             if self._debug and (
                 iteration % self._transfo_save_artifacts_iterations == 0
@@ -149,6 +155,7 @@ class LocalTrainer:
                 )
 
         if self._debug:
+            rendered_image, _, _, _ = render(camera, gaussian_model)
             self._save_artifacts(losses, rendered_image, output_path, "best")
             save_image(image, output_path / f"ground_truth.png")
 

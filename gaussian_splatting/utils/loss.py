@@ -17,10 +17,16 @@ from torch.autograd import Variable
 
 
 class PhotometricLoss:
-    def __init__(self, lambda_dssim: float = 0.2):
+    def __init__(self, lambda_dssim: float = 0.2, mask_white_pixels: bool = False):
         self._lambda_dssim = lambda_dssim
+        self._mask_white_pixels = mask_white_pixels
 
     def __call__(self, network_output, gt):
+        if self._mask_white_pixels:
+            mask = (network_output != 1.0).int()
+            network_output = network_output * mask
+            gt = gt * mask
+
         l1_value = l1_loss(network_output, gt)
         ssim_value = ssim(network_output, gt)
 

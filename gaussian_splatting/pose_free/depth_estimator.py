@@ -1,7 +1,6 @@
 import torch
 from transformers import pipeline
 
-from gaussian_splatting.dataset.image_dataset import ImageDataset
 from gaussian_splatting.utils.general import TorchToPIL
 
 
