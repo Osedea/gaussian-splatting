@@ -46,7 +46,7 @@ docker run -it --gpus all --rm -v $(pwd):/workspace/ gaussian_splatting
 
 ```shell
 conda activate gaussian_splatting
-pip install submodules/simple-knn
+pip install submodules/diff-gaussian-rasterization submodules/simple-knn
 ```
 
 ### 5. [Optional] Test your Environment. 

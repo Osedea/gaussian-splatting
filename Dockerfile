@@ -6,7 +6,6 @@ RUN apt update && \
     build-essential \
     wget \
     vim \
-    libglm-dev \
     imagemagick
 
 # Install conda

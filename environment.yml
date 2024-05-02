@@ -262,7 +262,6 @@ dependencies:
   - zstd=1.5.5=hfc55251_0
   - pip:
       - -e .
-      - submodules/diff-gaussian-rasterization
       - black==24.4.2
       - chardet==5.2.0
       - charset-normalizer==3.3.2
