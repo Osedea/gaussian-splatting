@@ -263,7 +263,6 @@ dependencies:
   - pip:
       - -e .
       - submodules/diff-gaussian-rasterization
-      - submodules/simple-knn
       - black==24.4.2
       - chardet==5.2.0
       - charset-normalizer==3.3.2
