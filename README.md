@@ -39,13 +39,14 @@ For development, we suggest running the Docker conrtainer in interactive mode.
 To do so, you must mount the proper resources. 
 
 ```shell
-nvidia-docker run -it --rm -v $(pwd):/workspace/ gaussian_splatting 
+docker run -it --gpus all --rm -v $(pwd):/workspace/ gaussian_splatting 
 ```
 
 ### 4. Activate the Conda Environment.
 
 ```shell
-conda activate gaussian_activate
+conda activate gaussian_splatting
+pip install submodules/diff-gaussian-rasterization submodules/simple-knn
 ```
 
 ### 5. [Optional] Test your Environment. 
@@ -130,14 +131,6 @@ camera poses during training, pass the `--pose-free` flag to training script.
 ```shell
 python scripts/train.py -s <path to dataset>
 ```
-
-### 3. Evaluation
-
-```shell
-python scripts/render.py -m <path to trained model>
-python scripts/metrics.py -m <path to trained model> 
-```
-
 
 # Viewer
 

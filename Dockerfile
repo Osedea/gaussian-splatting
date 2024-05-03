@@ -63,4 +63,3 @@ RUN cd .. && \
     cmake .. -GNinja && \
     ninja && \
     ninja install
-

@@ -11,6 +11,7 @@ setup(
         "isort",
         "importchecker",
         "matplotlib",
-        "transformers"
+        "transformers",
+        "chardet"
     ]
 )
